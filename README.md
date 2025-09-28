@@ -44,6 +44,9 @@ A professional, high-performance web-based 3D audio visualizer with interactive 
 - **Keyboard Shortcuts**:
   - `SPACE` - Toggle UI visibility
   - `P` - Switch between themes
+- **Mobile Controls**:
+  - Floating menu button (☰) in bottom-left corner
+  - Tap to toggle UI panels on mobile devices
 
 ### Performance
 
@@ -157,6 +160,7 @@ If audio loopback seems complex, simply:
 
 - ✅ Chrome/Edge - Full support including audio output device selection
 - ✅ Firefox/Safari - Works but no output device selection (setSinkId not supported)
+- ✅ Mobile Browsers - Fully responsive with touch-optimized UI
 - Requires: Web Audio API, WebGL, getUserMedia for microphone access
 
 ## Technical Details

@@ -79,6 +79,8 @@ The visualizer then captures this looped-back audio via the microphone input API
 - **Frequency Analysis**: Uses `getByteFrequencyData()` with 1024 frequency bins, split into bass/mid/treble ranges
 - **Color System**: HSL color cycling driven by `time` variable, scaled by `colorSpeed` slider
 - **UI State**: All UI visibility controlled by class toggles, keyboard shortcuts (SPACE=toggle UI, P=switch theme)
+- **Mobile UI**: Hidden by default on mobile (≤768px), toggled via floating hamburger button (☰/✕) in bottom-left corner
+- **Responsive Design**: Touch-friendly controls (48px min-height), 16px font-size to prevent zoom on input focus, scrollable panels
 
 ## Adding New Features
 
@@ -111,4 +113,5 @@ The system audio loopback approach is the recommended workaround for visualizing
 
 - Chrome/Edge: Full support including audio output device selection
 - Firefox/Safari: Works but no output device selection (setSinkId not supported)
+- Mobile Browsers: Fully responsive with touch-optimized UI, hidden by default with floating menu button
 - Requires: Web Audio API, WebGL, getUserMedia for microphone access
