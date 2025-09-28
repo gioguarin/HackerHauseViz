@@ -450,13 +450,6 @@
 
     <button class="mobile-toggle-btn" id="mobile-toggle-btn">☰</button>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js"
-            }
-        }
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
     <script>
         class AudioVisualizer {
@@ -469,6 +462,7 @@
                 this.currentStream = null;
                 this.currentMediaElement = null;
                 this.selectedOutputDeviceId = null;
+                this.currentObjectURL = null;
 
                 this.scene = null;
                 this.camera = null;
@@ -812,12 +806,23 @@
                 });
 
                 document.getElementById('custom-text-btn').addEventListener('click', () => {
-                    const customText = document.getElementById('custom-text-input').value;
-                    if (customText.trim()) {
-                        this.banner.setText(customText);
-                        console.log('[CustomText] Banner updated: ' + customText);
+                    const input = document.getElementById('custom-text-input');
+                    const customText = input.value;
+                    
+                    if (customText.length > 500) {
+                        this.showError('Text too long (max 500 characters)');
+                        return;
+                    }
+                    
+                    const sanitized = customText.replace(/[^A-Za-z0-9\s.:\-]/g, '');
+                    
+                    if (sanitized.trim()) {
+                        this.banner.setText(sanitized);
+                        input.value = sanitized;
+                        console.log('[CustomText] Banner updated: ' + sanitized);
                     } else {
                         this.banner.resetText();
+                        input.value = '';
                         console.log('[CustomText] Banner reset to default');
                     }
                 });
@@ -969,6 +974,18 @@
 
             async loadFile(file) {
                 if (!file) return;
+                
+                const maxSize = 500 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    this.showError('File too large (max 500MB)');
+                    return;
+                }
+                
+                const allowedTypes = ['audio/', 'video/'];
+                if (!allowedTypes.some(type => file.type.startsWith(type))) {
+                    this.showError('Invalid file type. Please upload audio or video files.');
+                    return;
+                }
 
                 try {
                     this.stopAudio();
@@ -980,7 +997,8 @@
                     this.setupAnalyser();
 
                     const audio = new Audio();
-                    audio.src = URL.createObjectURL(file);
+                    this.currentObjectURL = URL.createObjectURL(file);
+                    audio.src = this.currentObjectURL;
                     audio.loop = true;
                     this.currentMediaElement = audio;
 
@@ -1042,9 +1060,31 @@
                 }
             }
 
+            validateURL(url) {
+                try {
+                    const urlObj = new URL(url);
+                    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+                        throw new Error('Only HTTP and HTTPS protocols are allowed');
+                    }
+                    if (url.length > 2048) {
+                        throw new Error('URL too long (max 2048 characters)');
+                    }
+                    return true;
+                } catch (error) {
+                    throw new Error('Invalid URL: ' + error.message);
+                }
+            }
+
             async loadStream(url) {
                 if (!url) {
                     this.showError('Please enter a stream URL');
+                    return;
+                }
+                
+                try {
+                    this.validateURL(url);
+                } catch (error) {
+                    this.showError(error.message);
                     return;
                 }
 
@@ -1117,6 +1157,12 @@
                     this.currentMediaElement.pause();
                     this.currentMediaElement.src = '';
                     this.currentMediaElement = null;
+                }
+                
+                if (this.currentObjectURL) {
+                    URL.revokeObjectURL(this.currentObjectURL);
+                    this.currentObjectURL = null;
+                    console.log('[Memory] Object URL revoked');
                 }
                 
                 const dnbBtn = document.getElementById('dnb-stream-btn');
@@ -1226,7 +1272,8 @@
 
             showError(message) {
                 const errorEl = document.getElementById('error-message');
-                errorEl.textContent = message;
+                const sanitized = String(message).replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 200);
+                errorEl.textContent = sanitized;
                 errorEl.style.display = 'block';
                 setTimeout(() => {
                     errorEl.style.display = 'none';
