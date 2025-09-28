@@ -44,9 +44,14 @@ A professional, high-performance web-based 3D audio visualizer with interactive 
 - **Keyboard Shortcuts**:
   - `SPACE` - Toggle UI visibility
   - `P` - Switch between themes
-- **Mobile Controls**:
-  - Floating menu button (☰) in bottom-left corner
-  - Tap to toggle UI panels on mobile devices
+- **Camera Controls**:
+  - **Desktop**: Click and drag to rotate, mouse wheel to zoom (10-100 units)
+  - **Mobile**: One finger swipe to rotate, two finger pinch to zoom
+  - Camera orbits around origin, always centered on visualizer
+- **UI Toggle**:
+  - Floating menu button (☰) in bottom-left corner (all devices)
+  - UI hidden by default for immersive experience
+  - Click/tap button or press SPACE to toggle
 
 ### Performance
 

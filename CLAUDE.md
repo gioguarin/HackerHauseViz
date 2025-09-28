@@ -75,11 +75,12 @@ The visualizer then captures this looped-back audio via the microphone input API
 ## Key Technical Details
 
 - **Performance**: Particle updates are throttled (10% per frame), Game of Life updates at 5 FPS, proper object pooling with disposal
-- **Three.js Scene**: Standard PerspectiveCamera at z=30, WebGLRenderer with antialias, responsive resize handling
+- **Three.js Scene**: Standard PerspectiveCamera with orbit controls, WebGLRenderer with antialias, responsive resize handling
+- **Camera Controls**: Custom implementation with mouse drag and touch gesture support (rotation + zoom), camera orbits spherically around origin (0,0,0), distance range 10-100 units
 - **Frequency Analysis**: Uses `getByteFrequencyData()` with 1024 frequency bins, split into bass/mid/treble ranges
 - **Color System**: HSL color cycling driven by `time` variable, scaled by `colorSpeed` slider
-- **UI State**: All UI visibility controlled by class toggles, keyboard shortcuts (SPACE=toggle UI, P=switch theme)
-- **Mobile UI**: Hidden by default on mobile (≤768px), toggled via floating hamburger button (☰/✕) in bottom-left corner
+- **UI State**: All UI hidden by default on all devices, toggled via floating hamburger button (☰/✕) or SPACE key
+- **Mobile UI**: Fully touch-optimized with one-finger rotation, two-finger pinch zoom, proper gesture event handling
 - **Responsive Design**: Touch-friendly controls (48px min-height), 16px font-size to prevent zoom on input focus, scrollable panels
 
 ## Adding New Features
