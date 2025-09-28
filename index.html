@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 3D Audio Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            background: #000;
+            color: #0ff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #banner-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 3;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 300px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            transition: opacity 0.3s;
+        }
+
+        .control-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .control-panel h2 {
+            color: #0ff;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #0ff;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #0ff;
+            color: #0ff;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.active {
+            background: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 15px #0ff;
+        }
+
+        input[type="text"], input[type="file"], select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #0ff;
+            color: #0ff;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .slider-value {
+            display: inline-block;
+            float: right;
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .status-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 3;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 250px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .status-panel h3 {
+            color: #0ff;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        .status-item {
+            margin: 5px 0;
+            font-size: 11px;
+            color: #0dd;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .toggle-group button {
+            flex: 1;
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 3;
+            background: rgba(0, 20, 40, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 10px;
+            color: #0dd;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            color: #0ff;
+            font-size: 24px;
+            text-shadow: 0 0 20px #0ff;
+        }
+
+        .error-message {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(255, 0, 0, 0.8);
+            border: 2px solid #f00;
+            border-radius: 10px;
+            padding: 15px 30px;
+            color: #fff;
+            font-size: 14px;
+            max-width: 500px;
+            text-align: center;
+            display: none;
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background: rgba(0, 20, 40, 0.95);
+            min-width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            z-index: 1;
+            border: 1px solid #0ff;
+            border-radius: 5px;
+        }
+
+        .dropdown-content button {
+            color: #0ff;
+            padding: 8px 12px;
+            text-align: left;
+            border: none;
+            margin: 0;
+            border-radius: 0;
+        }
+
+        .dropdown-content button:hover {
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        .dropdown.active .dropdown-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Initializing...</div>
+    <div class="error-message" id="error-message"></div>
+
+    <canvas id="banner-canvas"></canvas>
+    <div id="canvas-container"></div>
+
+    <div class="control-panel" id="control-panel">
+        <h2>AUDIO VISUALIZER</h2>
+
+        <div class="control-group">
+            <div class="dropdown" id="mic-dropdown">
+                <button id="mic-btn">🎤 Microphone</button>
+                <div class="dropdown-content" id="mic-devices"></div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="dropdown" id="output-dropdown">
+                <button id="output-btn">🔊 Output Device</button>
+                <div class="dropdown-content" id="output-devices"></div>
+            </div>
+            <button id="refresh-devices-btn" style="margin-top: 5px; font-size: 11px; padding: 5px;">🔄 Refresh Devices</button>
+        </div>
+
+        <div class="control-group">
+            <label>Audio/Video File:</label>
+            <input type="file" id="file-input" accept="audio/*,video/*">
+        </div>
+
+        <div class="control-group">
+            <label>Stream URL:</label>
+            <input type="text" id="stream-input" placeholder="Paste audio stream URL">
+            <button id="stream-btn">Load Stream</button>
+        </div>
+
+        <div class="control-group">
+            <button id="stop-btn">⏹ Stop Audio</button>
+        </div>
+
+        <div class="control-group">
+            <label>Sensitivity: <span class="slider-value" id="sensitivity-value">5</span></label>
+            <input type="range" id="sensitivity-slider" min="1" max="10" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Color Speed: <span class="slider-value" id="color-speed-value">5</span></label>
+            <input type="range" id="color-speed-slider" min="1" max="10" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Toggles:</label>
+            <div class="toggle-group">
+                <button id="gol-toggle" class="active">Game of Life</button>
+                <button id="text-toggle" class="active">Story Text</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button id="theme-btn">Switch Theme (P)</button>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <h3>AUDIO STATUS</h3>
+        <div class="status-item">Source: <span id="audio-source">None</span></div>
+        <div class="status-item">Output: <span id="audio-output">Default</span></div>
+        <div class="status-item">Theme: <span id="current-theme">Space</span></div>
+        <div class="status-item">FPS: <span id="fps-counter">60</span></div>
+    </div>
+
+    <div class="keyboard-hint">
+        SPACE: Toggle UI | P: Switch Theme
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js"
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+    <script>
+        class AudioVisualizer {
+            constructor() {
+                this.audioContext = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.bufferLength = null;
+                this.audioSource = null;
+                this.currentStream = null;
+                this.currentMediaElement = null;
+                this.selectedOutputDeviceId = null;
+
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.currentTheme = null;
+
+                this.sensitivity = 5;
+                this.colorSpeed = 5;
+                this.golEnabled = true;
+                this.textEnabled = true;
+                this.uiVisible = true;
+
+                this.fpsTime = 0;
+                this.fpsFrames = 0;
+                this.currentFPS = 60;
+
+                this.init();
+            }
+
+            init() {
+                this.setupThreeJS();
+                this.setupBanner();
+                this.setupUI();
+                this.setupKeyboard();
+                this.setupGameOfLife();
+
+                this.currentTheme = new SpaceTheme(this.scene, this.camera);
+
+                document.getElementById('loading').style.display = 'none';
+
+                this.animate();
+            }
+
+            setupThreeJS() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000000);
+
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 30;
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                window.addEventListener('resize', () => this.onResize());
+            }
+
+            setupBanner() {
+                this.banner = new NeonBanner();
+            }
+
+            setupGameOfLife() {
+                this.gol = new GameOfLife(this.scene);
+            }
+
+            setupUI() {
+                document.getElementById('mic-btn').addEventListener('click', () => {
+                    this.toggleMicDropdown();
+                });
+
+                document.getElementById('output-btn').addEventListener('click', () => {
+                    this.toggleOutputDropdown();
+                });
+
+                document.getElementById('refresh-devices-btn').addEventListener('click', () => {
+                    this.loadMicDevices();
+                    this.loadOutputDevices();
+                    this.detectActiveOutputDevice();
+                });
+
+                this.loadMicDevices();
+                this.loadOutputDevices();
+
+                document.getElementById('file-input').addEventListener('change', (e) => {
+                    this.loadFile(e.target.files[0]);
+                });
+
+                document.getElementById('stream-btn').addEventListener('click', () => {
+                    const url = document.getElementById('stream-input').value;
+                    this.loadStream(url);
+                });
+
+                document.getElementById('stop-btn').addEventListener('click', () => {
+                    this.stopAudio();
+                });
+
+                document.getElementById('sensitivity-slider').addEventListener('input', (e) => {
+                    this.sensitivity = parseInt(e.target.value);
+                    document.getElementById('sensitivity-value').textContent = this.sensitivity;
+                });
+
+                document.getElementById('color-speed-slider').addEventListener('input', (e) => {
+                    this.colorSpeed = parseInt(e.target.value);
+                    document.getElementById('color-speed-value').textContent = this.colorSpeed;
+                });
+
+                document.getElementById('gol-toggle').addEventListener('click', (e) => {
+                    this.golEnabled = !this.golEnabled;
+                    e.target.classList.toggle('active');
+                    this.gol.setVisible(this.golEnabled);
+                });
+
+                document.getElementById('text-toggle').addEventListener('click', (e) => {
+                    this.textEnabled = !this.textEnabled;
+                    e.target.classList.toggle('active');
+                    this.banner.setVisible(this.textEnabled);
+                });
+
+                document.getElementById('theme-btn').addEventListener('click', () => {
+                    this.switchTheme();
+                });
+            }
+
+            setupKeyboard() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.toggleUI();
+                    } else if (e.code === 'KeyP') {
+                        this.switchTheme();
+                    }
+                });
+            }
+
+            async loadMicDevices() {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioDevices = devices.filter(d => d.kind === 'audioinput');
+
+                    const container = document.getElementById('mic-devices');
+                    container.innerHTML = '';
+
+                    audioDevices.forEach(device => {
+                        const btn = document.createElement('button');
+                        btn.textContent = device.label || `Microphone ${device.deviceId.substr(0, 8)}`;
+                        btn.addEventListener('click', () => {
+                            this.startMicrophone(device.deviceId);
+                            this.toggleMicDropdown();
+                        });
+                        container.appendChild(btn);
+                    });
+                } catch (error) {
+                    this.showError('Failed to load microphone devices: ' + error.message);
+                }
+            }
+
+            toggleMicDropdown() {
+                document.getElementById('mic-dropdown').classList.toggle('active');
+            }
+
+            toggleOutputDropdown() {
+                document.getElementById('output-dropdown').classList.toggle('active');
+            }
+
+            async loadOutputDevices() {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+                    const container = document.getElementById('output-devices');
+                    container.innerHTML = '';
+
+                    const defaultBtn = document.createElement('button');
+                    defaultBtn.textContent = 'Default Output';
+                    defaultBtn.addEventListener('click', () => {
+                        this.selectOutputDevice(null, 'Default Output');
+                        this.toggleOutputDropdown();
+                    });
+                    container.appendChild(defaultBtn);
+
+                    audioOutputs.forEach(device => {
+                        const btn = document.createElement('button');
+                        btn.textContent = device.label || `Speaker ${device.deviceId.substr(0, 8)}`;
+                        btn.addEventListener('click', () => {
+                            this.selectOutputDevice(device.deviceId, btn.textContent);
+                            this.toggleOutputDropdown();
+                        });
+                        container.appendChild(btn);
+                    });
+
+                    this.detectActiveOutputDevice();
+                } catch (error) {
+                    this.showError('Failed to load output devices: ' + error.message);
+                }
+            }
+
+            async detectActiveOutputDevice() {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+                    if (this.currentMediaElement && typeof this.currentMediaElement.sinkId !== 'undefined') {
+                        const activeSinkId = this.currentMediaElement.sinkId;
+
+                        if (activeSinkId === '') {
+                            document.getElementById('audio-output').textContent = 'Default Output';
+                        } else {
+                            const activeDevice = audioOutputs.find(d => d.deviceId === activeSinkId);
+                            if (activeDevice) {
+                                document.getElementById('audio-output').textContent = activeDevice.label || 'Unknown Device';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to detect active output device:', error);
+                }
+            }
+
+            async selectOutputDevice(deviceId, deviceName) {
+                this.selectedOutputDeviceId = deviceId;
+                document.getElementById('audio-output').textContent = deviceName;
+
+                if (this.currentMediaElement && typeof this.currentMediaElement.setSinkId === 'function') {
+                    try {
+                        await this.currentMediaElement.setSinkId(deviceId || '');
+                    } catch (error) {
+                        this.showError('Failed to set output device: ' + error.message);
+                    }
+                }
+            }
+
+            async startMicrophone(deviceId = null) {
+                try {
+                    this.stopAudio();
+
+                    const constraints = {
+                        audio: deviceId ? { deviceId: { exact: deviceId } } : true
+                    };
+
+                    this.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    this.setupAnalyser();
+                    this.audioSource = this.audioContext.createMediaStreamSource(this.currentStream);
+                    this.audioSource.connect(this.analyser);
+
+                    const device = this.currentStream.getAudioTracks()[0];
+                    document.getElementById('audio-source').textContent = device.label || 'Microphone';
+
+                } catch (error) {
+                    this.showError('Microphone access failed: ' + error.message);
+                }
+            }
+
+            async loadFile(file) {
+                if (!file) return;
+
+                try {
+                    this.stopAudio();
+
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    this.setupAnalyser();
+
+                    const audio = new Audio();
+                    audio.src = URL.createObjectURL(file);
+                    audio.loop = true;
+                    this.currentMediaElement = audio;
+
+                    if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
+                        try {
+                            await audio.setSinkId(this.selectedOutputDeviceId);
+                        } catch (error) {
+                            console.warn('Failed to set output device:', error);
+                        }
+                    }
+
+                    this.audioSource = this.audioContext.createMediaElementSource(audio);
+                    this.audioSource.connect(this.analyser);
+                    this.analyser.connect(this.audioContext.destination);
+
+                    await audio.play();
+
+                    document.getElementById('audio-source').textContent = file.name;
+                    this.detectActiveOutputDevice();
+
+                } catch (error) {
+                    this.showError('File loading failed: ' + error.message);
+                }
+            }
+
+            async loadStream(url) {
+                if (!url) {
+                    this.showError('Please enter a stream URL');
+                    return;
+                }
+
+                try {
+                    this.stopAudio();
+
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+
+                    this.setupAnalyser();
+
+                    const audio = new Audio();
+                    audio.src = url;
+                    audio.crossOrigin = 'anonymous';
+                    audio.loop = false;
+                    this.currentMediaElement = audio;
+
+                    if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
+                        try {
+                            await audio.setSinkId(this.selectedOutputDeviceId);
+                        } catch (error) {
+                            console.warn('Failed to set output device:', error);
+                        }
+                    }
+
+                    this.audioSource = this.audioContext.createMediaElementSource(audio);
+                    this.audioSource.connect(this.analyser);
+                    this.analyser.connect(this.audioContext.destination);
+
+                    await audio.play();
+
+                    const urlObj = new URL(url);
+                    document.getElementById('audio-source').textContent = `Stream: ${urlObj.hostname}`;
+                    this.detectActiveOutputDevice();
+
+                } catch (error) {
+                    this.showError('Stream loading failed: ' + error.message);
+                }
+            }
+
+            setupAnalyser() {
+                if (this.analyser) {
+                    this.analyser.disconnect();
+                }
+
+                this.analyser = this.audioContext.createAnalyser();
+                this.analyser.fftSize = 2048;
+                this.bufferLength = this.analyser.frequencyBinCount;
+                this.dataArray = new Uint8Array(this.bufferLength);
+                this.analyser.smoothingTimeConstant = 0.8;
+            }
+
+            stopAudio() {
+                if (this.audioSource) {
+                    this.audioSource.disconnect();
+                    this.audioSource = null;
+                }
+
+                if (this.currentStream) {
+                    this.currentStream.getTracks().forEach(track => track.stop());
+                    this.currentStream = null;
+                }
+
+                if (this.currentMediaElement) {
+                    this.currentMediaElement.pause();
+                    this.currentMediaElement = null;
+                }
+
+                document.getElementById('audio-source').textContent = 'None';
+            }
+
+            switchTheme() {
+                if (this.currentTheme) {
+                    this.currentTheme.dispose();
+                }
+
+                if (this.currentTheme instanceof SpaceTheme) {
+                    this.currentTheme = new DysonSphereTheme(this.scene, this.camera);
+                    document.getElementById('current-theme').textContent = 'Dyson Sphere';
+                } else {
+                    this.currentTheme = new SpaceTheme(this.scene, this.camera);
+                    document.getElementById('current-theme').textContent = 'Space';
+                }
+            }
+
+            toggleUI() {
+                this.uiVisible = !this.uiVisible;
+                document.getElementById('control-panel').classList.toggle('hidden');
+            }
+
+            getFrequencyData() {
+                if (!this.analyser) return { bass: 0, mid: 0, treble: 0, array: [] };
+
+                this.analyser.getByteFrequencyData(this.dataArray);
+
+                const bassEnd = Math.floor(this.bufferLength * 0.1);
+                const midEnd = Math.floor(this.bufferLength * 0.4);
+
+                let bass = 0, mid = 0, treble = 0;
+
+                for (let i = 0; i < bassEnd; i++) bass += this.dataArray[i];
+                for (let i = bassEnd; i < midEnd; i++) mid += this.dataArray[i];
+                for (let i = midEnd; i < this.bufferLength; i++) treble += this.dataArray[i];
+
+                bass = (bass / bassEnd / 255) * this.sensitivity;
+                mid = (mid / (midEnd - bassEnd) / 255) * this.sensitivity;
+                treble = (treble / (this.bufferLength - midEnd) / 255) * this.sensitivity;
+
+                return {
+                    bass: Math.min(bass, 3),
+                    mid: Math.min(mid, 3),
+                    treble: Math.min(treble, 3),
+                    array: Array.from(this.dataArray)
+                };
+            }
+
+            updateFPS() {
+                this.fpsFrames++;
+                const now = performance.now();
+                if (now >= this.fpsTime + 1000) {
+                    this.currentFPS = Math.round((this.fpsFrames * 1000) / (now - this.fpsTime));
+                    this.fpsTime = now;
+                    this.fpsFrames = 0;
+                    document.getElementById('fps-counter').textContent = this.currentFPS;
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                const freqData = this.getFrequencyData();
+
+                if (this.currentTheme) {
+                    this.currentTheme.update(freqData, this.colorSpeed);
+                }
+
+                if (this.golEnabled && this.gol) {
+                    this.gol.update(freqData.bass);
+                }
+
+                if (this.textEnabled && this.banner) {
+                    const avgAudio = (freqData.bass + freqData.mid + freqData.treble) / 3;
+                    this.banner.update(avgAudio, this.colorSpeed);
+                }
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateFPS();
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                if (this.banner) this.banner.onResize();
+            }
+
+            showError(message) {
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+                setTimeout(() => {
+                    errorEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        class SpaceTheme {
+            constructor(scene, camera) {
+                this.scene = scene;
+                this.camera = camera;
+                this.objects = [];
+                this.lights = [];
+                this.time = 0;
+
+                this.createOrb();
+                this.createRings();
+                this.createParticles();
+                this.createLights();
+            }
+
+            createOrb() {
+                const geometry = new THREE.SphereGeometry(3, 32, 32);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x00ffff,
+                    emissive: 0x00ffff,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                this.orb = new THREE.Mesh(geometry, material);
+                this.scene.add(this.orb);
+                this.objects.push(this.orb);
+            }
+
+            createRings() {
+                this.rings = [];
+                for (let i = 0; i < 5; i++) {
+                    const radius = 8 + i * 3;
+                    const geometry = new THREE.TorusGeometry(radius, 0.1, 16, 100);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x00ffff,
+                        emissive: 0x00ffff,
+                        emissiveIntensity: 0.3
+                    });
+                    const ring = new THREE.Mesh(geometry, material);
+                    ring.rotation.x = Math.PI / 2 + Math.random() * 0.5;
+                    ring.rotation.y = Math.random() * Math.PI;
+                    this.scene.add(ring);
+                    this.rings.push({ mesh: ring, baseRotX: ring.rotation.x, baseRotY: ring.rotation.y });
+                    this.objects.push(ring);
+                }
+            }
+
+            createParticles() {
+                const particleCount = 500;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI;
+                    const radius = 15 + Math.random() * 10;
+
+                    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+                    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                    positions[i * 3 + 2] = radius * Math.cos(phi);
+
+                    colors[i * 3] = 0;
+                    colors[i * 3 + 1] = 1;
+                    colors[i * 3 + 2] = 1;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    blending: THREE.AdditiveBlending,
+                    transparent: true
+                });
+
+                this.particles = new THREE.Points(geometry, material);
+                this.scene.add(this.particles);
+                this.objects.push(this.particles);
+
+                this.particleBasePositions = positions.slice();
+            }
+
+            createLights() {
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                this.lights.push(ambientLight);
+
+                for (let i = 0; i < 3; i++) {
+                    const light = new THREE.PointLight(0x00ffff, 1, 100);
+                    this.scene.add(light);
+                    this.lights.push(light);
+                }
+            }
+
+            update(freqData, colorSpeed) {
+                this.time += 0.01 * colorSpeed;
+
+                if (this.orb) {
+                    const scale = 1 + freqData.bass * 0.5;
+                    this.orb.scale.set(scale, scale, scale);
+                    this.orb.material.emissiveIntensity = 0.5 + freqData.bass * 0.5;
+
+                    const hue = (this.time * 0.1) % 1;
+                    this.orb.material.color.setHSL(hue, 1, 0.5);
+                    this.orb.material.emissive.setHSL(hue, 1, 0.5);
+                }
+
+                this.rings.forEach((ringData, i) => {
+                    const scale = 1 + (freqData.mid + freqData.treble) * 0.1;
+                    ringData.mesh.scale.set(scale, scale, scale);
+
+                    ringData.mesh.rotation.x = ringData.baseRotX + Math.sin(this.time * 0.3 + i) * 0.3;
+                    ringData.mesh.rotation.y = ringData.baseRotY + this.time * 0.1 * (i + 1);
+                    ringData.mesh.rotation.z += 0.005 * (i + 1) * colorSpeed;
+
+                    const hue = ((this.time * 0.1) + i * 0.2) % 1;
+                    ringData.mesh.material.color.setHSL(hue, 1, 0.5);
+                    ringData.mesh.material.emissive.setHSL(hue, 1, 0.5);
+                    ringData.mesh.material.emissiveIntensity = 0.3 + freqData.mid * 0.3;
+                });
+
+                if (this.particles) {
+                    const positions = this.particles.geometry.attributes.position.array;
+                    const colors = this.particles.geometry.attributes.color.array;
+
+                    for (let i = 0; i < positions.length / 3; i++) {
+                        if (i < freqData.array.length && Math.random() < 0.1) {
+                            const intensity = freqData.array[i] / 255;
+                            const scale = 1 + intensity * 0.5;
+
+                            positions[i * 3] = this.particleBasePositions[i * 3] * scale;
+                            positions[i * 3 + 1] = this.particleBasePositions[i * 3 + 1] * scale;
+                            positions[i * 3 + 2] = this.particleBasePositions[i * 3 + 2] * scale;
+
+                            const hue = (this.time * 0.1 + i * 0.01) % 1;
+                            const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                            colors[i * 3] = color.r;
+                            colors[i * 3 + 1] = color.g;
+                            colors[i * 3 + 2] = color.b;
+                        }
+                    }
+
+                    this.particles.geometry.attributes.position.needsUpdate = true;
+                    this.particles.geometry.attributes.color.needsUpdate = true;
+                    this.particles.rotation.y += 0.001 * colorSpeed;
+                }
+
+                this.lights.forEach((light, i) => {
+                    if (i > 0) {
+                        const angle = this.time + (i * Math.PI * 2 / 3);
+                        const radius = 20 + freqData.bass * 10;
+                        light.position.x = Math.cos(angle) * radius;
+                        light.position.z = Math.sin(angle) * radius;
+                        light.position.y = Math.sin(this.time * 2) * 10;
+                        light.intensity = 1 + freqData.treble;
+
+                        const hue = (this.time * 0.1 + i * 0.3) % 1;
+                        light.color.setHSL(hue, 1, 0.5);
+                    }
+                });
+            }
+
+            dispose() {
+                this.objects.forEach(obj => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) obj.material.dispose();
+                    this.scene.remove(obj);
+                });
+
+                this.lights.forEach(light => {
+                    this.scene.remove(light);
+                });
+            }
+        }
+
+        class DysonSphereTheme {
+            constructor(scene, camera) {
+                this.scene = scene;
+                this.camera = camera;
+                this.objects = [];
+                this.lights = [];
+                this.time = 0;
+
+                this.createSun();
+                this.createPanels();
+                this.createShell();
+                this.createLights();
+            }
+
+            createSun() {
+                const geometry = new THREE.SphereGeometry(4, 32, 32);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0xff8800,
+                    emissive: 0xff8800,
+                    emissiveIntensity: 1,
+                    metalness: 0.5,
+                    roughness: 0.3
+                });
+                this.sun = new THREE.Mesh(geometry, material);
+                this.scene.add(this.sun);
+                this.objects.push(this.sun);
+            }
+
+            createPanels() {
+                this.panels = [];
+                const panelCount = 200;
+
+                for (let i = 0; i < panelCount; i++) {
+                    const geometry = new THREE.PlaneGeometry(0.5, 0.8);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0xffaa00,
+                        emissive: 0xff8800,
+                        emissiveIntensity: 0.3,
+                        metalness: 0.8,
+                        roughness: 0.2,
+                        side: THREE.DoubleSide
+                    });
+                    const panel = new THREE.Mesh(geometry, material);
+
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI;
+                    const radius = 12;
+
+                    panel.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                    panel.position.y = radius * Math.sin(phi) * Math.sin(theta);
+                    panel.position.z = radius * Math.cos(phi);
+
+                    panel.lookAt(0, 0, 0);
+
+                    this.scene.add(panel);
+                    this.panels.push({
+                        mesh: panel,
+                        theta: theta,
+                        phi: phi,
+                        speed: 0.001 + Math.random() * 0.002
+                    });
+                    this.objects.push(panel);
+                }
+            }
+
+            createShell() {
+                const geometry = new THREE.SphereGeometry(20, 32, 32);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0xffaa00,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                this.shell = new THREE.Mesh(geometry, material);
+                this.scene.add(this.shell);
+                this.objects.push(this.shell);
+            }
+
+            createLights() {
+                const ambientLight = new THREE.AmbientLight(0x402000);
+                this.scene.add(ambientLight);
+                this.lights.push(ambientLight);
+
+                const sunLight = new THREE.PointLight(0xff8800, 2, 100);
+                this.scene.add(sunLight);
+                this.lights.push(sunLight);
+            }
+
+            update(freqData, colorSpeed) {
+                this.time += 0.01 * colorSpeed;
+
+                if (this.sun) {
+                    const scale = 1 + freqData.bass * 0.4;
+                    this.sun.scale.set(scale, scale, scale);
+                    this.sun.material.emissiveIntensity = 1 + freqData.bass * 0.5;
+                }
+
+                this.panels.forEach((panelData, i) => {
+                    panelData.theta += panelData.speed * colorSpeed;
+
+                    const radius = 12;
+                    panelData.mesh.position.x = radius * Math.sin(panelData.phi) * Math.cos(panelData.theta);
+                    panelData.mesh.position.y = radius * Math.sin(panelData.phi) * Math.sin(panelData.theta);
+                    panelData.mesh.position.z = radius * Math.cos(panelData.phi);
+
+                    panelData.mesh.lookAt(0, 0, 0);
+
+                    if (i < freqData.array.length) {
+                        const intensity = freqData.array[i] / 255;
+                        const scale = 1 + intensity * 0.5;
+                        panelData.mesh.scale.set(scale, scale, 1);
+                        panelData.mesh.material.emissiveIntensity = 0.3 + intensity * 0.5;
+                    }
+                });
+
+                if (this.shell) {
+                    const scale = 1 + freqData.mid * 0.1;
+                    this.shell.scale.set(scale, scale, scale);
+                    this.shell.rotation.y += 0.0005 * colorSpeed;
+                    this.shell.material.opacity = 0.2 + freqData.treble * 0.2;
+                }
+            }
+
+            dispose() {
+                this.objects.forEach(obj => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) obj.material.dispose();
+                    this.scene.remove(obj);
+                });
+
+                this.lights.forEach(light => {
+                    this.scene.remove(light);
+                });
+            }
+        }
+
+        class GameOfLife {
+            constructor(scene) {
+                this.scene = scene;
+                this.gridSize = 100;
+                this.cellSize = 0.8;
+                this.grid = [];
+                this.nextGrid = [];
+                this.lastUpdate = 0;
+                this.updateInterval = 200;
+                this.visible = true;
+
+                this.initGrid();
+                this.createMesh();
+            }
+
+            initGrid() {
+                for (let i = 0; i < this.gridSize; i++) {
+                    this.grid[i] = [];
+                    this.nextGrid[i] = [];
+                    for (let j = 0; j < this.gridSize; j++) {
+                        this.grid[i][j] = Math.random() < 0.3 ? 1 : 0;
+                        this.nextGrid[i][j] = 0;
+                    }
+                }
+            }
+
+            createMesh() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                this.sphereRadius = 35;
+
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        const phi = (i / this.gridSize) * Math.PI;
+                        const theta = (j / this.gridSize) * Math.PI * 2;
+
+                        const x = this.sphereRadius * Math.sin(phi) * Math.cos(theta);
+                        const y = this.sphereRadius * Math.sin(phi) * Math.sin(theta);
+                        const z = this.sphereRadius * Math.cos(phi);
+
+                        positions.push(x, y, z);
+                        colors.push(0, 1, 1);
+                    }
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: this.cellSize * 2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+
+                this.mesh = new THREE.Points(geometry, material);
+                this.scene.add(this.mesh);
+
+                this.basePositions = positions.slice();
+            }
+
+            countNeighbors(x, y) {
+                let count = 0;
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue;
+                        const nx = (x + i + this.gridSize) % this.gridSize;
+                        const ny = (y + j + this.gridSize) % this.gridSize;
+                        count += this.grid[nx][ny];
+                    }
+                }
+                return count;
+            }
+
+            updateGrid(audioIntensity) {
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        const neighbors = this.countNeighbors(i, j);
+
+                        if (this.grid[i][j] === 1) {
+                            this.nextGrid[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                        } else {
+                            this.nextGrid[i][j] = (neighbors === 3) ? 1 : 0;
+                        }
+
+                        if (audioIntensity > 1 && Math.random() < audioIntensity * 0.01) {
+                            this.nextGrid[i][j] = 1;
+                        }
+                    }
+                }
+
+                [this.grid, this.nextGrid] = [this.nextGrid, this.grid];
+            }
+
+            updateMesh() {
+                const colors = this.mesh.geometry.attributes.color.array;
+                const positions = this.mesh.geometry.attributes.position.array;
+
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        const idx = (i * this.gridSize + j) * 3;
+
+                        if (this.grid[i][j] === 1) {
+                            colors[idx] = 0;
+                            colors[idx + 1] = 1;
+                            colors[idx + 2] = 1;
+
+                            const scale = 1 + Math.random() * 0.05;
+                            positions[idx] = this.basePositions[idx] * scale;
+                            positions[idx + 1] = this.basePositions[idx + 1] * scale;
+                            positions[idx + 2] = this.basePositions[idx + 2] * scale;
+                        } else {
+                            colors[idx] = 0;
+                            colors[idx + 1] = 0.1;
+                            colors[idx + 2] = 0.1;
+
+                            positions[idx] = this.basePositions[idx];
+                            positions[idx + 1] = this.basePositions[idx + 1];
+                            positions[idx + 2] = this.basePositions[idx + 2];
+                        }
+                    }
+                }
+
+                this.mesh.geometry.attributes.color.needsUpdate = true;
+                this.mesh.geometry.attributes.position.needsUpdate = true;
+            }
+
+            update(audioIntensity) {
+                if (!this.visible) return;
+
+                const now = performance.now();
+                if (now - this.lastUpdate > this.updateInterval) {
+                    this.updateGrid(audioIntensity);
+                    this.updateMesh();
+                    this.lastUpdate = now;
+                }
+            }
+
+            setVisible(visible) {
+                this.visible = visible;
+                this.mesh.visible = visible;
+            }
+        }
+
+        class NeonBanner {
+            constructor() {
+                this.canvas = document.getElementById('banner-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.text = "HACKER HOUSE POST-CONVENTION STORIES: The energy was electric as developers gathered to share tales of brilliant hacks and innovative solutions... ";
+                this.scrollX = 0;
+                this.time = 0;
+                this.visible = true;
+
+                this.font = {
+                    A: [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+                    B: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],
+                    C: [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
+                    D: [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
+                    E: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],
+                    F: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+                    G: [[0,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[0,1,1,0]],
+                    H: [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+                    I: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+                    J: [[0,0,1,1],[0,0,0,1],[0,0,0,1],[1,0,0,1],[0,1,1,0]],
+                    K: [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
+                    L: [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
+                    M: [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+                    N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
+                    O: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+                    P: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+                    Q: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,1,0],[0,1,0,1]],
+                    R: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
+                    S: [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
+                    T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
+                    U: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+                    V: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0],[0,1,0,0]],
+                    W: [[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,1,0,1,1],[1,0,0,0,1]],
+                    X: [[1,0,0,1],[0,1,1,0],[0,1,0,0],[0,1,1,0],[1,0,0,1]],
+                    Y: [[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,1,0]],
+                    Z: [[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
+                    ' ': [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+                    ':': [[0],[1],[0],[1],[0]],
+                    '.': [[0],[0],[0],[0],[1]],
+                    '-': [[0,0,0],[0,0,0],[1,1,1],[0,0,0],[0,0,0]]
+                };
+
+                this.onResize();
+            }
+
+            onResize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = 60;
+            }
+
+            drawChar(char, x, y, pixelSize, color, glow) {
+                const pattern = this.font[char.toUpperCase()] || this.font[' '];
+
+                for (let row = 0; row < pattern.length; row++) {
+                    for (let col = 0; col < pattern[row].length; col++) {
+                        if (pattern[row][col]) {
+                            const px = x + col * pixelSize;
+                            const py = y + row * pixelSize;
+
+                            if (glow > 0) {
+                                this.ctx.shadowBlur = 10 + glow * 10;
+                                this.ctx.shadowColor = color;
+                            }
+
+                            this.ctx.fillStyle = color;
+                            this.ctx.fillRect(px, py, pixelSize - 1, pixelSize - 1);
+                        }
+                    }
+                }
+
+                this.ctx.shadowBlur = 0;
+            }
+
+            update(audioIntensity, colorSpeed) {
+                if (!this.visible) {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    return;
+                }
+
+                this.time += 0.01 * colorSpeed;
+                this.scrollX -= 2;
+
+                const pixelSize = 6;
+                const charSpacing = 5;
+
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const hue = (this.time * 0.1) % 1;
+                const color = `hsl(${hue * 360}, 100%, ${50 + audioIntensity * 20}%)`;
+                const glow = audioIntensity;
+
+                let x = this.scrollX;
+                const y = 10;
+
+                for (let i = 0; i < this.text.length; i++) {
+                    const char = this.text[i];
+                    const pattern = this.font[char.toUpperCase()] || this.font[' '];
+                    const charWidth = pattern[0].length * pixelSize;
+
+                    if (x + charWidth > 0 && x < this.canvas.width) {
+                        this.drawChar(char, x, y, pixelSize, color, glow);
+                    }
+
+                    x += charWidth + charSpacing;
+                }
+
+                if (this.scrollX + this.text.length * (pixelSize * 5 + charSpacing) < 0) {
+                    this.scrollX = this.canvas.width;
+                }
+            }
+
+            setVisible(visible) {
+                this.visible = visible;
+                if (!visible) {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof THREE === 'undefined') {
+                console.error('Three.js failed to load');
+                document.getElementById('loading').textContent = 'Error: Three.js failed to load';
+                return;
+            }
+            const visualizer = new AudioVisualizer();
+        });
+    </script>
+</body>
+</html>
