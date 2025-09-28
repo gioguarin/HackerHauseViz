@@ -37,6 +37,12 @@
             pointer-events: none;
         }
 
+        @media (max-width: 768px) {
+            #banner-canvas {
+                height: 40px;
+            }
+        }
+
         .control-panel {
             position: fixed;
             top: 20px;
@@ -48,8 +54,22 @@
             border-radius: 10px;
             padding: 20px;
             min-width: 300px;
+            max-width: calc(100vw - 40px);
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
             transition: opacity 0.3s;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                min-width: auto;
+                max-width: calc(100vw - 20px);
+                padding: 15px;
+            }
         }
 
         .control-panel.hidden {
@@ -75,6 +95,12 @@
             font-size: 12px;
         }
 
+        @media (max-width: 768px) {
+            .control-group label {
+                font-size: 14px;
+            }
+        }
+
         button {
             width: 100%;
             padding: 10px;
@@ -86,6 +112,17 @@
             border-radius: 5px;
             font-family: inherit;
             transition: all 0.3s;
+            min-height: 44px;
+            font-size: 14px;
+            -webkit-tap-highlight-color: rgba(0, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            button {
+                padding: 12px;
+                font-size: 16px;
+                min-height: 48px;
+            }
         }
 
         button:hover {
@@ -110,6 +147,16 @@
             color: #0ff;
             border-radius: 5px;
             font-family: inherit;
+            min-height: 44px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            input[type="text"], input[type="file"], select {
+                padding: 12px;
+                font-size: 16px;
+                min-height: 48px;
+            }
         }
 
         input[type="range"] {
@@ -136,6 +183,16 @@
             padding: 15px;
             min-width: 250px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .status-panel {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+                padding: 10px;
+            }
         }
 
         .status-panel h3 {
@@ -172,6 +229,12 @@
             padding: 10px;
             font-size: 10px;
             color: #0dd;
+        }
+
+        @media (max-width: 768px) {
+            .keyboard-hint {
+                display: none;
+            }
         }
 
         #loading {
@@ -219,6 +282,13 @@
             z-index: 1;
             border: 1px solid #0ff;
             border-radius: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 768px) {
+            .dropdown-content {
+                max-height: 150px;
+            }
         }
 
         .dropdown-content button {
