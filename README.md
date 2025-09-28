@@ -1,6 +1,12 @@
-# Hacker House Audio Visualizer
+# HackerHausVisualizer
+
+![Deploy Status](https://github.com/gioguarin/HackerHauseViz/actions/workflows/deploy.yml/badge.svg)
 
 A professional, high-performance web-based 3D audio visualizer with interactive themes, built with Three.js and Web Audio API.
+
+## 🚀 Live Demo
+
+**[View Live Demo](https://gioguarin.github.io/HackerHauseViz/)**
 
 ## Features
 
@@ -48,7 +54,15 @@ A professional, high-performance web-based 3D audio visualizer with interactive 
 
 ## Deployment
 
-### Deploy to Vercel
+### GitHub Pages (Current Deployment)
+
+This project is automatically deployed to GitHub Pages on every push to `main`:
+
+**Live URL**: https://gioguarin.github.io/HackerHauseViz/
+
+The deployment is handled by GitHub Actions (see `.github/workflows/deploy.yml`).
+
+### Alternative: Deploy to Vercel
 
 1. Install Vercel CLI (if not already installed):
    ```bash
@@ -64,14 +78,6 @@ A professional, high-performance web-based 3D audio visualizer with interactive 
    ```bash
    vercel --prod
    ```
-
-### Or Deploy via Vercel Dashboard
-
-1. Push this repository to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Click "Import Project"
-4. Select your repository
-5. Deploy (no build configuration needed)
 
 ## Local Development
 
