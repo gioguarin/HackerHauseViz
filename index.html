@@ -426,6 +426,12 @@
         </div>
 
         <div class="control-group">
+            <label>Custom Banner Text:</label>
+            <input type="text" id="custom-text-input" placeholder="Enter your message...">
+            <button id="custom-text-btn">Update Banner</button>
+        </div>
+
+        <div class="control-group">
             <button id="theme-btn">Switch Theme (P)</button>
         </div>
     </div>
@@ -803,6 +809,23 @@
 
                 document.getElementById('theme-btn').addEventListener('click', () => {
                     this.switchTheme();
+                });
+
+                document.getElementById('custom-text-btn').addEventListener('click', () => {
+                    const customText = document.getElementById('custom-text-input').value;
+                    if (customText.trim()) {
+                        this.banner.setText(customText);
+                        console.log('[CustomText] Banner updated: ' + customText);
+                    } else {
+                        this.banner.resetText();
+                        console.log('[CustomText] Banner reset to default');
+                    }
+                });
+
+                document.getElementById('custom-text-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('custom-text-btn').click();
+                    }
                 });
 
                 document.getElementById('mobile-toggle-btn').addEventListener('click', () => {
@@ -1743,7 +1766,8 @@
             constructor() {
                 this.canvas = document.getElementById('banner-canvas');
                 this.ctx = this.canvas.getContext('2d');
-                this.text = "HACKERHAUS POST-CONVENTION STORIES: The energy was electric as developers gathered to share tales of brilliant hacks and innovative solutions... ";
+                this.defaultText = "HACKERHAUS POST-CONVENTION STORIES: The energy was electric as developers gathered to share tales of brilliant hacks and innovative solutions... ";
+                this.text = this.defaultText;
                 this.scrollX = 0;
                 this.time = 0;
                 this.visible = true;
@@ -1856,6 +1880,16 @@
                 if (!visible) {
                     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 }
+            }
+            
+            setText(newText) {
+                this.text = newText.toUpperCase() + " ";
+                this.scrollX = this.canvas.width;
+            }
+            
+            resetText() {
+                this.text = this.defaultText;
+                this.scrollX = this.canvas.width;
             }
         }
 
