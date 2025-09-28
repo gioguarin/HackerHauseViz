@@ -531,6 +531,11 @@
                 this.cameraRotation = { x: 0, y: 0 };
                 this.cameraDistance = 30;
                 this.touchStartDistance = null;
+                
+                this.lastTapTime = 0;
+                this.doubleTapThreshold = 300;
+                this.autoRotateActive = false;
+                this.autoRotateDirection = 1;
 
                 const canvas = this.renderer.domElement;
 
@@ -572,8 +577,17 @@
 
                 canvas.addEventListener('touchstart', (e) => {
                     if (e.touches.length === 1) {
-                        this.isDragging = true;
-                        this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        const currentTime = Date.now();
+                        const timeSinceLastTap = currentTime - this.lastTapTime;
+                        
+                        if (timeSinceLastTap < this.doubleTapThreshold && timeSinceLastTap > 0) {
+                            this.handleDoubleTap();
+                            this.lastTapTime = 0;
+                        } else {
+                            this.lastTapTime = currentTime;
+                            this.isDragging = true;
+                            this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        }
                     } else if (e.touches.length === 2) {
                         this.isDragging = false;
                         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -625,6 +639,24 @@
                 
                 this.camera.position.set(x, y, z);
                 this.camera.lookAt(0, 0, 0);
+            }
+            
+            handleDoubleTap() {
+                if (this.autoRotateActive) {
+                    this.autoRotateActive = false;
+                    console.log('[DoubleTap] Auto-rotation stopped');
+                } else {
+                    this.autoRotateActive = true;
+                    this.autoRotateDirection *= -1;
+                    console.log('[DoubleTap] Auto-rotation started - direction: ' + (this.autoRotateDirection > 0 ? 'clockwise' : 'counter-clockwise'));
+                }
+            }
+            
+            updateAutoRotate() {
+                if (this.autoRotateActive) {
+                    this.cameraRotation.y += 0.01 * this.autoRotateDirection;
+                    this.updateCameraPosition();
+                }
             }
             
             setupCinemaMode() {
@@ -1097,6 +1129,7 @@
                 const freqData = this.getFrequencyData();
                 
                 this.updateCinemaMode();
+                this.updateAutoRotate();
 
                 if (this.currentTheme) {
                     this.currentTheme.update(freqData, this.colorSpeed);
