@@ -149,6 +149,16 @@
             box-shadow: 0 0 15px #0ff;
         }
 
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.loading {
+            background: rgba(255, 165, 0, 0.3);
+            border-color: #ffa500;
+        }
+
         input[type="text"], input[type="file"], select {
             width: 100%;
             padding: 8px;
@@ -390,6 +400,10 @@
         </div>
 
         <div class="control-group">
+            <button id="dnb-stream-btn">🎵 Drum & Bass Radio</button>
+        </div>
+
+        <div class="control-group">
             <button id="stop-btn">⏹ Stop Audio</button>
         </div>
 
@@ -460,6 +474,12 @@
                 this.golEnabled = true;
                 this.textEnabled = true;
                 this.uiVisible = false;
+                this.activeDnBButton = false;
+                
+                this.cinemaMode = true;
+                this.lastUserInteraction = 0;
+                this.cinemaInactivityTimeout = 10000;
+                this.cinemaRotationSpeed = 0.0003;
 
                 this.fpsTime = 0;
                 this.fpsFrames = 0;
@@ -500,6 +520,7 @@
                 document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
                 this.setupCameraControls();
+                this.setupCinemaMode();
 
                 window.addEventListener('resize', () => this.onResize());
             }
@@ -605,6 +626,37 @@
                 this.camera.position.set(x, y, z);
                 this.camera.lookAt(0, 0, 0);
             }
+            
+            setupCinemaMode() {
+                const interactionEvents = ['mousedown', 'mousemove', 'wheel', 'touchstart', 'touchmove', 'keydown'];
+                
+                interactionEvents.forEach(eventType => {
+                    window.addEventListener(eventType, () => {
+                        if (this.cinemaMode) {
+                            console.log('[CinemaMode] User interaction detected - disabling cinema mode');
+                            this.cinemaMode = false;
+                        }
+                        this.lastUserInteraction = performance.now();
+                    });
+                });
+                
+                console.log('[CinemaMode] Enabled - camera will auto-rotate until user interaction');
+            }
+            
+            updateCinemaMode() {
+                const now = performance.now();
+                const timeSinceInteraction = now - this.lastUserInteraction;
+                
+                if (!this.cinemaMode && timeSinceInteraction > this.cinemaInactivityTimeout) {
+                    console.log('[CinemaMode] Re-enabling after ' + (timeSinceInteraction / 1000).toFixed(1) + 's of inactivity');
+                    this.cinemaMode = true;
+                }
+                
+                if (this.cinemaMode) {
+                    this.cameraRotation.y += this.cinemaRotationSpeed;
+                    this.updateCameraPosition();
+                }
+            }
 
             setupBanner() {
                 this.banner = new NeonBanner();
@@ -639,6 +691,10 @@
                 document.getElementById('stream-btn').addEventListener('click', () => {
                     const url = document.getElementById('stream-input').value;
                     this.loadStream(url);
+                });
+
+                document.getElementById('dnb-stream-btn').addEventListener('click', () => {
+                    this.loadDnBStream();
                 });
 
                 document.getElementById('stop-btn').addEventListener('click', () => {
@@ -849,6 +905,42 @@
                 }
             }
 
+            async loadDnBStream() {
+                const streamUrl = 'http://65.108.124.70:7200/stream';
+                const btn = document.getElementById('dnb-stream-btn');
+                
+                if (window.location.protocol === 'https:' && streamUrl.startsWith('http:')) {
+                    this.showError('⚠️ Mixed Content Error: Cannot load HTTP stream on HTTPS page. The D&B stream must be served over HTTPS to work on GitHub Pages.');
+                    return;
+                }
+                
+                btn.disabled = true;
+                btn.classList.add('loading');
+                btn.textContent = '⏳ Connecting...';
+                
+                try {
+                    await this.loadStream(streamUrl);
+                    btn.textContent = '▶️ D&B Playing';
+                    btn.classList.remove('loading');
+                    btn.classList.add('active');
+                    this.activeDnBButton = true;
+                } catch (error) {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    btn.textContent = '🎵 Drum & Bass Radio';
+                    
+                    if (error.name === 'NotAllowedError') {
+                        this.showError('Audio playback blocked. Please interact with the page first, then try again.');
+                    } else if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
+                        this.showError('CORS Error: The stream server does not allow cross-origin access. Contact the radio station administrator.');
+                    } else if (error.message.includes('network') || error.message.includes('NetworkError')) {
+                        this.showError('Network Error: Cannot reach the D&B stream. Check if the radio station is online.');
+                    } else {
+                        this.showError('Failed to load D&B stream: ' + error.message);
+                    }
+                }
+            }
+
             async loadStream(url) {
                 if (!url) {
                     this.showError('Please enter a stream URL');
@@ -860,6 +952,10 @@
 
                     if (!this.audioContext) {
                         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
                     }
 
                     this.setupAnalyser();
@@ -889,7 +985,7 @@
                     this.detectActiveOutputDevice();
 
                 } catch (error) {
-                    this.showError('Stream loading failed: ' + error.message);
+                    throw error;
                 }
             }
 
@@ -918,7 +1014,16 @@
 
                 if (this.currentMediaElement) {
                     this.currentMediaElement.pause();
+                    this.currentMediaElement.src = '';
                     this.currentMediaElement = null;
+                }
+                
+                const dnbBtn = document.getElementById('dnb-stream-btn');
+                if (dnbBtn && this.activeDnBButton) {
+                    dnbBtn.disabled = false;
+                    dnbBtn.classList.remove('active', 'loading');
+                    dnbBtn.textContent = '🎵 Drum & Bass Radio';
+                    this.activeDnBButton = false;
                 }
 
                 document.getElementById('audio-source').textContent = 'None';
@@ -990,6 +1095,8 @@
                 requestAnimationFrame(() => this.animate());
 
                 const freqData = this.getFrequencyData();
+                
+                this.updateCinemaMode();
 
                 if (this.currentTheme) {
                     this.currentTheme.update(freqData, this.colorSpeed);
@@ -1348,9 +1455,16 @@
                 this.lastUpdate = 0;
                 this.updateInterval = 200;
                 this.visible = true;
+                
+                this.updateCount = 0;
+                this.cellChanges = 0;
+                this.diagnosticInterval = 5000;
+                this.lastDiagnostic = 0;
 
                 this.initGrid();
                 this.createMesh();
+                
+                console.log('[GameOfLife] Initialized: grid=' + this.gridSize + 'x' + this.gridSize + ', cells=' + (this.gridSize * this.gridSize));
             }
 
             initGrid() {
@@ -1415,9 +1529,12 @@
             }
 
             updateGrid(audioIntensity) {
+                let changes = 0;
+                
                 for (let i = 0; i < this.gridSize; i++) {
                     for (let j = 0; j < this.gridSize; j++) {
                         const neighbors = this.countNeighbors(i, j);
+                        const oldState = this.grid[i][j];
 
                         if (this.grid[i][j] === 1) {
                             this.nextGrid[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
@@ -1428,10 +1545,16 @@
                         if (audioIntensity > 1 && Math.random() < audioIntensity * 0.01) {
                             this.nextGrid[i][j] = 1;
                         }
+                        
+                        if (oldState !== this.nextGrid[i][j]) {
+                            changes++;
+                        }
                     }
                 }
 
                 [this.grid, this.nextGrid] = [this.nextGrid, this.grid];
+                this.cellChanges = changes;
+                this.updateCount++;
             }
 
             updateMesh() {
@@ -1475,12 +1598,65 @@
                     this.updateGrid(audioIntensity);
                     this.updateMesh();
                     this.lastUpdate = now;
+                    
+                    if (now - this.lastDiagnostic > this.diagnosticInterval) {
+                        this.runDiagnostics();
+                        this.lastDiagnostic = now;
+                    }
+                }
+            }
+            
+            runDiagnostics() {
+                let aliveCells = 0;
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        if (this.grid[i][j] === 1) aliveCells++;
+                    }
+                }
+                
+                const totalCells = this.gridSize * this.gridSize;
+                const alivePercent = ((aliveCells / totalCells) * 100).toFixed(1);
+                const fps = (1000 / this.updateInterval).toFixed(1);
+                
+                console.log('[GameOfLife] Status:');
+                console.log('  ├─ Updates: ' + this.updateCount);
+                console.log('  ├─ Alive cells: ' + aliveCells + '/' + totalCells + ' (' + alivePercent + '%)');
+                console.log('  ├─ Last changes: ' + this.cellChanges + ' cells');
+                console.log('  ├─ Update rate: ' + fps + ' Hz (' + this.updateInterval + 'ms)');
+                console.log('  ├─ Visible: ' + this.visible);
+                console.log('  └─ Mesh in scene: ' + (this.mesh.parent !== null));
+                
+                if (aliveCells === 0) {
+                    console.warn('[GameOfLife] WARNING: No alive cells detected! Re-seeding...');
+                    this.initGrid();
+                } else if (this.cellChanges === 0 && this.updateCount > 5) {
+                    console.warn('[GameOfLife] WARNING: No cell changes detected (static pattern)');
                 }
             }
 
             setVisible(visible) {
                 this.visible = visible;
                 this.mesh.visible = visible;
+                console.log('[GameOfLife] Visibility changed: ' + visible);
+            }
+            
+            getStatus() {
+                let aliveCells = 0;
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        if (this.grid[i][j] === 1) aliveCells++;
+                    }
+                }
+                
+                return {
+                    updates: this.updateCount,
+                    aliveCells: aliveCells,
+                    totalCells: this.gridSize * this.gridSize,
+                    lastChanges: this.cellChanges,
+                    visible: this.visible,
+                    updateInterval: this.updateInterval,
+                    inScene: this.mesh.parent !== null
+                };
             }
         }
 
