@@ -85,8 +85,11 @@ html = html.replace(
     `<script>\n${combinedJs}\n    </script>`
 );
 
-// Remove import map since we're not using modules
-html = html.replace(/<script type="importmap">[\s\S]*?<\/script>\s*/g, '');
+// Replace import map with Three.js CDN script
+html = html.replace(
+    /<script type="importmap">[\s\S]*?<\/script>/g,
+    '<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>'
+);
 
 // Write the combined file
 fs.writeFileSync('index.html', html);
