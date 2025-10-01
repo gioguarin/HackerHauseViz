@@ -1,64 +1,78 @@
-# HackerHausVisualizer
+# HackerHause Visualizer
 
 ![Deploy Status](https://github.com/gioguarin/HackerHauseViz/actions/workflows/deploy.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A professional, high-performance web-based 3D audio visualizer with interactive themes, built with Three.js and Web Audio API.
+A professional, high-performance web-based 3D audio visualizer with interactive themes, built with Three.js and the Web Audio API. Features real-time audio analysis, multiple visualization themes, Game of Life background, and support for various audio input sources including microphone, files, and system audio loopback.
 
 ## 🚀 Live Demo
 
 **[View Live Demo](https://gioguarin.github.io/HackerHauseViz/)**
 
-## Features
+## 📸 Screenshots
 
-### Audio Input Sources
+Experience immersive 3D audio visualization with multiple themes, real-time frequency analysis, and interactive controls.
+
+## ✨ Features
+
+### 🎵 Audio Input Sources
 - 🎤 **Microphone** - Real-time audio visualization with device selection
-- 📁 **Local Files** - Upload audio/video files
-- 🔊 **Output Device Selection** - Route audio to Bluetooth speakers or any output device
-- 🎵 **Spotify Integration** - Visualize Spotify playback using system audio loopback (see setup guide below)
+- 📁 **Local Files** - Upload and visualize audio/video files
+- 🔊 **Output Device Selection** - Route audio to Bluetooth speakers or any output device (Chrome/Edge only)
+- 🎵 **Spotify/System Audio** - Visualize any desktop audio using system audio loopback (see setup guide below)
 
-### Visualization Themes
+### 🎨 Visualization Themes
 
 #### Space Theme
-- Central pulsating orb (bass-reactive)
-- 5 animated rings (mid/treble-reactive)
-- 500 circular particles (frequency bin-reactive)
-- Dynamic point lights
+- 🌟 Central pulsating orb (bass-reactive)
+- 💫 5 animated rings (mid/treble-reactive)
+- ✨ 500 circular particles (individual frequency bin-reactive)
+- 💡 Dynamic point lights
 
 #### Dyson Sphere Theme
-- Central sun core (bass-reactive)
-- 200 orbiting solar panels (individual frequency-reactive)
-- Wireframe outer shell (mid-frequency expansion)
-- Golden/orange color palette
+- ☀️ Central sun core (bass-reactive)
+- 🛰️ 200 orbiting solar panels (individual frequency-reactive)
+- 🌐 Wireframe outer shell (mid-frequency expansion)
+- 🟡 Golden/orange color palette
 
-### Visual Effects
+### 🎭 Visual Effects
 
-- **Conway's Game of Life Background** - 100x100 grid evolving with audio intensity
-- **Neon Text Banner** - Scrolling pixel-art text with custom bitmap font and audio-reactive glow
-- **Post-processing** - Neon glow effects and color cycling
+- **Conway's Game of Life Background** - 100x100 cellular automaton mapped to sphere, evolving with audio intensity
+- **Neon Text Banner** - Scrolling pixel-art text with custom 5x4 bitmap font and audio-reactive glow
+- **Color Cycling** - HSL color shifts synchronized with audio
+- **Cinema Mode** - Hide all UI for immersive full-screen experience
 
-### Controls
+### 🎮 Controls
 
-- **Sensitivity Slider** - Adjust audio reactivity (1-10)
-- **Color Speed Slider** - Control color cycling speed (1-10)
-- **Toggle Buttons** - Enable/disable Game of Life and Story Text
-- **Keyboard Shortcuts**:
-  - `SPACE` - Toggle UI visibility
-  - `P` - Switch between themes
-- **Camera Controls**:
-  - **Desktop**: Click and drag to rotate, mouse wheel to zoom (10-100 units)
-  - **Mobile**: One finger swipe to rotate, two finger pinch to zoom
-  - Camera orbits around origin, always centered on visualizer
-- **UI Toggle**:
-  - Floating menu button (☰) in bottom-left corner (all devices)
-  - UI hidden by default for immersive experience
-  - Click/tap button or press SPACE to toggle
+#### Keyboard Shortcuts
+- `SPACE` - Toggle UI visibility (cinema mode)
+- `P` - Switch between themes
 
-### Performance
+#### Sliders
+- **Sensitivity** - Adjust audio reactivity intensity (1-10x)
+- **Color Speed** - Control color cycling speed (1-10x)
 
-- 60 FPS target with real-time FPS counter
-- Efficient particle system updates
-- Throttled Game of Life updates (200ms intervals)
-- Proper Three.js resource management
+#### Toggle Switches
+- **Game of Life** - Enable/disable cellular automaton background
+- **Story Text** - Enable/disable scrolling neon banner
+
+#### Camera Controls
+- **Desktop**: Click and drag to rotate, mouse wheel to zoom (10-100 units)
+- **Mobile**: One finger swipe to rotate, pinch to zoom
+- **Double-tap** (mobile) - Rotate camera 180° around the scene
+
+#### UI Management
+- Floating hamburger button (☰/✕) in bottom-left corner
+- UI hidden by default for immersive full-screen experience
+- Touch-optimized with 48px minimum touch targets
+
+### ⚡ Performance
+
+- 🎯 60 FPS target with real-time FPS counter
+- 🔄 Throttled particle updates (10% per frame)
+- ⏱️ Game of Life updates at 5 FPS (200ms intervals)
+- 🧹 Proper Three.js resource disposal and memory management
+- 📊 FFT analysis with 2048 samples (1024 frequency bins)
 
 ## Deployment
 
@@ -87,21 +101,46 @@ The deployment is handled by GitHub Actions (see `.github/workflows/deploy.yml`)
    vercel --prod
    ```
 
-## Local Development
+## 🛠️ Local Development
 
-Simply open `index.html` in a modern web browser (Chrome recommended for full audio output device support).
+### Quick Start
 
-No build process or dependencies required - it's a single self-contained HTML file.
+Simply open [index.html](./index.html) in a modern web browser (Chrome recommended for full audio output device support).
 
-### Running with Local Server
+**No build process, compilation, or dependencies required** - it's a single self-contained HTML file!
 
-For best performance and to avoid CORS issues:
+### Running with Local Server (Recommended)
+
+For best performance and to avoid CORS issues when loading audio files:
 
 ```bash
+# Python 3
 python3 -m http.server 8000
+
+# Python 2
+python -m SimpleHTTPServer 8000
+
+# Node.js (npx)
+npx http-server -p 8000
+
+# PHP
+php -S localhost:8000
 ```
 
 Then open `http://localhost:8000` in your browser.
+
+### Project Structure
+
+```
+HackerHauseViz/
+├── index.html          # Single-file application (HTML + CSS + JS)
+├── CLAUDE.md          # Architecture documentation for AI assistants
+├── README.md          # This file
+├── .gitignore         # Git ignore patterns
+└── .github/
+    └── workflows/
+        └── deploy.yml  # GitHub Actions deployment config
+```
 
 ## Spotify Integration
 
@@ -176,16 +215,84 @@ If audio loopback seems complex, simply:
 - **FFT Size** - 2048 (1024 frequency bins)
 - **Frequency Split** - Bass (0-10%), Mid (10-40%), Treble (40-100%)
 
-## Architecture
+## 🏗️ Architecture
 
-The application uses a modular class-based architecture:
-- `AudioVisualizer` - Main controller
-- `SpaceTheme` / `DysonSphereTheme` - Visualization themes
-- `GameOfLife` - Conway's Game of Life background
-- `NeonBanner` - Scrolling text banner
+The application uses a modular class-based architecture with clear separation of concerns:
 
-See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
+### Core Classes
 
-## License
+- **`AudioVisualizer`** - Main controller orchestrating the entire application
+  - Manages Web Audio API context and analyzers
+  - Controls Three.js scene, camera, and renderer
+  - Handles audio input sources (mic, file, system audio)
+  - Frequency analysis with bass/mid/treble splitting
+  - Theme switching and UI event coordination
 
-MIT
+- **`SpaceTheme`** - Space visualization implementation
+  - Central pulsating orb (bass-reactive)
+  - 5 animated rings (mid/treble-reactive)
+  - 500 particles (frequency bin-reactive)
+
+- **`DysonSphereTheme`** - Dyson sphere visualization
+  - Central sun core
+  - 200 orbiting solar panels
+  - Wireframe expansion shell
+
+- **`GameOfLife`** - Conway's Game of Life cellular automaton
+  - 100x100 grid mapped to spherical surface
+  - Audio-intensity cell spawning
+  - Spherical coordinate wrapping
+
+- **`NeonBanner`** - Scrolling pixel-art text renderer
+  - Custom 5x4 bitmap font system
+  - Canvas-based rendering
+  - Audio-reactive color cycling
+
+### Audio Processing Pipeline
+
+```
+Audio Source (Mic/File/System)
+    ↓
+Web Audio API AudioContext
+    ↓
+AnalyserNode (FFT: 2048, Smoothing: 0.8)
+    ↓
+Frequency Data Extraction (1024 bins)
+    ↓
+Frequency Split: Bass (0-10%), Mid (10-40%), Treble (40-100%)
+    ↓
+Normalized Values × Sensitivity Multiplier (1-10x)
+    ↓
+All Active Visualizers
+```
+
+See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation and development guidelines.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Adding New Features
+
+See [CLAUDE.md](./CLAUDE.md) for guidelines on:
+- Adding new visualization themes
+- Creating new audio sources
+- Implementing new visual effects
+
+## 📝 License
+
+MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Three.js](https://threejs.org/) - 3D rendering library
+- Uses [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) for real-time audio analysis
+- Inspired by music visualizers and Conway's Game of Life
+
+## 📧 Contact
+
+For questions or feedback, please open an issue on GitHub.
+
+---
+
+**Made with ❤️ for the audio visualization community**
