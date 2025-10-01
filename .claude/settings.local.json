@@ -4,7 +4,8 @@
       "Bash(git add:*)",
       "Bash(awk:*)",
       "Bash(curl:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nMajor refactoring: Modular ES6 architecture and enhanced features\n\n- Refactored 1,952-line single HTML file into modular ES6 architecture\n- Created separate modules for themes, effects, and core functionality\n- Enhanced DysonSphereTheme with 3-layer uniform panels and energy beams\n- Added cinema mode (C key) with smooth auto-rotation\n- Implemented double-click/double-tap auto-rotation toggle\n- Fixed mobile UI with full-screen control panel\n- Added comprehensive documentation and deployment guides\n- Configured GitHub Actions for automatic deployment\n- Updated README with GitHub Pages deployment instructions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
