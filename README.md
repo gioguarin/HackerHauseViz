@@ -3,7 +3,7 @@
 ![Deploy Status](https://github.com/gioguarin/HackerHauseViz/actions/workflows/deploy.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A professional, high-performance web-based 3D audio visualizer with interactive themes, built with Three.js and the Web Audio API. Features real-time audio analysis, multiple visualization themes, Game of Life background, and support for various audio input sources including microphone, files, and system audio loopback.
+A professional, high-performance web-based 3D audio visualizer with interactive themes, built with Three.js and the Web Audio API. Features real-time audio analysis, enhanced Dyson Sphere with energy beams, Conway's Game of Life background, cinema mode, and mobile-optimized UI.
 
 ## 🚀 Live Demo
 
@@ -26,14 +26,21 @@ Experience immersive 3D audio visualization with multiple themes, real-time freq
 #### Space Theme
 - 🌟 Central pulsating orb (bass-reactive)
 - 💫 5 animated rings (mid/treble-reactive)
-- ✨ 500 circular particles (individual frequency bin-reactive)
+- ✨ 5000 starfield background particles
 - 💡 Dynamic point lights
 
-#### Dyson Sphere Theme
-- ☀️ Central sun core (bass-reactive)
-- 🛰️ 200 orbiting solar panels (individual frequency-reactive)
-- 🌐 Wireframe outer shell (mid-frequency expansion)
-- 🟡 Golden/orange color palette
+#### Dyson Sphere Theme (Enhanced)
+- ☀️ Central sun core (bass-reactive with impact points)
+- 🛰️ **3 Concentric Layers** of uniform square solar panels:
+  - Inner layer (radius 8): Small panels responding to bass
+  - Middle layer (radius 12): Medium panels responding to mids
+  - Outer layer (radius 16): Large panels responding to treble
+- ⚡ **Energy Beams**: Panels randomly fire golden beams to the sun
+  - Dual-layer glow effect (bright core + soft halo)
+  - Source panels brighten and shift to white when firing
+  - Pulsing impact points on sun surface
+- 🌐 Wireframe outer shell (treble-reactive)
+- 🔄 All panels orbit horizontally in synchronized formation
 
 ### 🎭 Visual Effects
 
@@ -45,26 +52,31 @@ Experience immersive 3D audio visualization with multiple themes, real-time freq
 ### 🎮 Controls
 
 #### Keyboard Shortcuts
-- `SPACE` - Toggle UI visibility (cinema mode)
+- `SPACE` - Toggle UI visibility
 - `P` - Switch between themes
+- `C` - Toggle cinema mode (smooth auto-rotation)
+- `[-]` or `-` - Decrease rotation speed
+- `[+]` or `=` - Increase rotation speed
 
-#### Sliders
-- **Sensitivity** - Adjust audio reactivity intensity (1-10x)
-- **Color Speed** - Control color cycling speed (1-10x)
+#### Mouse/Touch Controls
+- **Double-click** - Toggle auto-rotation
+- **Click and drag** - Manual camera rotation
+- **Scroll wheel** - Zoom in/out (desktop)
+- **Pinch** - Zoom (mobile)
+- **Double-tap** - Toggle auto-rotation (mobile)
 
-#### Toggle Switches
-- **Game of Life** - Enable/disable cellular automaton background
-- **Story Text** - Enable/disable scrolling neon banner
+#### UI Controls
+- **Sensitivity** - Adjust audio reactivity (1-10x)
+- **Color Speed** - Control color cycling (1-10x)
+- **Game of Life** - Toggle cellular automaton
+- **Story Text** - Toggle scrolling banner
+- **Custom Banner** - Set your own scrolling text
 
-#### Camera Controls
-- **Desktop**: Click and drag to rotate, mouse wheel to zoom (10-100 units)
-- **Mobile**: One finger swipe to rotate, pinch to zoom
-- **Double-tap** (mobile) - Rotate camera 180° around the scene
-
-#### UI Management
-- Floating hamburger button (☰/✕) in bottom-left corner
-- UI hidden by default for immersive full-screen experience
-- Touch-optimized with 48px minimum touch targets
+#### Mobile Interface
+- **Hamburger button (☰)** - Only visible UI element on mobile
+- Tap to reveal full-screen control panel
+- All other UI hidden by default for clean experience
+- Changes to (✕) when menu open
 
 ### ⚡ Performance
 
@@ -74,15 +86,47 @@ Experience immersive 3D audio visualization with multiple themes, real-time freq
 - 🧹 Proper Three.js resource disposal and memory management
 - 📊 FFT analysis with 2048 samples (1024 frequency bins)
 
-## Deployment
+## 🌐 Deployment
 
-### GitHub Pages (Current Deployment)
+### GitHub Pages (Recommended)
 
-This project is automatically deployed to GitHub Pages on every push to `main`:
+This project is configured for automatic deployment to GitHub Pages.
 
 **Live URL**: https://gioguarin.github.io/HackerHauseViz/
 
-The deployment is handled by GitHub Actions (see `.github/workflows/deploy.yml`).
+#### Automatic Deployment
+The project uses GitHub Actions for continuous deployment on every push to `main`.
+
+#### Manual Deployment
+1. Build the production version:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+2. The original `index.html` is self-contained and works directly on GitHub Pages
+
+3. Enable GitHub Pages in your repository settings:
+   - Go to Settings → Pages
+   - Source: Deploy from a branch
+   - Branch: main / root
+   - Save
+
+#### Important Notes for GitHub Pages
+
+⚠️ **HTTPS Limitations**:
+- **Drum & Bass Radio button will NOT work** on GitHub Pages
+  - The stream uses HTTP (http://65.108.124.70:7200/stream)
+  - GitHub Pages forces HTTPS, blocking HTTP content
+  - This is a browser security feature (mixed content blocking)
+
+✅ **What DOES work on GitHub Pages**:
+- All visualizations and themes
+- Microphone input (requires user permission)
+- Local file uploads (audio/video)
+- All controls and effects
+- Mobile interface
+- Cinema mode and auto-rotation
 
 ### Alternative: Deploy to Vercel
 
@@ -105,9 +149,30 @@ The deployment is handled by GitHub Actions (see `.github/workflows/deploy.yml`)
 
 ### Quick Start
 
-Simply open [index.html](./index.html) in a modern web browser (Chrome recommended for full audio output device support).
+**Two versions available:**
 
-**No build process, compilation, or dependencies required** - it's a single self-contained HTML file!
+1. **Single-File Version** (Production):
+   ```bash
+   # Simply open index.html in a browser
+   open index.html
+   ```
+   - No build process or dependencies required
+   - Single self-contained HTML file (1,952 lines)
+   - Perfect for quick deployment
+
+2. **Modular Version** (Development - Recommended):
+   ```bash
+   # Python HTTP server
+   python3 -m http.server 8000
+   # Open http://localhost:8000/index-modular.html
+
+   # Or with Vite (install dependencies first)
+   npm install
+   npm run dev:vite
+   ```
+   - Organized into ES6 modules
+   - Better for development and contributions
+   - Hot module replacement with Vite
 
 ### Running with Local Server (Recommended)
 
@@ -125,6 +190,9 @@ npx http-server -p 8000
 
 # PHP
 php -S localhost:8000
+
+# Vite (after npm install)
+npm run dev:vite
 ```
 
 Then open `http://localhost:8000` in your browser.
@@ -133,13 +201,31 @@ Then open `http://localhost:8000` in your browser.
 
 ```
 HackerHauseViz/
-├── index.html          # Single-file application (HTML + CSS + JS)
-├── CLAUDE.md          # Architecture documentation for AI assistants
-├── README.md          # This file
-├── .gitignore         # Git ignore patterns
+├── index.html              # Original single-file version (production)
+├── index-modular.html      # New modular version (development)
+├── src/
+│   ├── js/
+│   │   ├── AudioVisualizer.js     # Main controller (836 lines)
+│   │   ├── main.js                # Entry point
+│   │   ├── themes/
+│   │   │   ├── SpaceTheme.js      # Space visualization
+│   │   │   └── DysonSphereTheme.js # Dyson sphere visualization
+│   │   └── effects/
+│   │       ├── GameOfLife.js      # Conway's Game of Life
+│   │       └── NeonBanner.js      # Scrolling text banner
+│   └── css/
+│       └── styles.css             # All styles
+├── .eslintrc.json          # ESLint configuration
+├── .prettierrc             # Prettier configuration
+├── vite.config.js          # Vite build tool configuration
+├── LICENSE                 # MIT License
+├── CONTRIBUTING.md         # Contribution guidelines
+├── MIGRATION.md            # Migration guide (v1 → v2)
+├── CLAUDE.md              # Architecture documentation
+├── README.md              # This file
 └── .github/
     └── workflows/
-        └── deploy.yml  # GitHub Actions deployment config
+        └── deploy.yml      # GitHub Actions deployment config
 ```
 
 ## Spotify Integration

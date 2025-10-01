@@ -4,21 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a single-file web-based 3D audio visualizer built with Three.js and the Web Audio API. The visualizer provides real-time audio-reactive animations with multiple themes, effects, and audio input sources.
+This is a web-based 3D audio visualizer built with Three.js and the Web Audio API. The project has two versions:
+1. **Original**: Single-file `index.html` (production-ready, GitHub Pages compatible)
+2. **Modular**: ES6 modules in `src/` directory (development, better maintainability)
 
 ## Running the Application
 
-Simply open `index.html` in a modern web browser (Chrome recommended for full audio output device support). No build process, compilation, or dependencies to install.
+### Production (GitHub Pages)
+Simply open `index.html` in a modern web browser. This is the version deployed to GitHub Pages.
 
-For best performance and to avoid CORS issues, run with a local server:
+### Development (Modular Version)
 ```bash
+# With npm/Vite (recommended for development)
+npm install
+npm run dev:vite
+
+# Or with Python (no npm needed)
 python3 -m http.server 8000
+# Then open http://localhost:8000/index-cdn.html
 ```
-Then navigate to `http://localhost:8000`
 
 ## Architecture
 
-The application is structured as a single self-contained HTML file with inline CSS and JavaScript. All code follows an object-oriented class-based architecture:
+The application follows an object-oriented class-based architecture. In the modular version, classes are split into separate ES6 modules:
 
 ### Core Classes
 

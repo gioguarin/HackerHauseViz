@@ -1,11 +1,17 @@
 {
   "name": "hacker-house-visualizer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Advanced 3D audio visualizer with interactive themes",
   "main": "index.html",
+  "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod"
+    "dev": "python3 -m http.server 8000",
+    "dev:vite": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vercel --prod",
+    "lint": "eslint src/**/*.js",
+    "format": "prettier --write \"src/**/*.{js,css,html}\""
   },
   "keywords": [
     "audio",
@@ -13,8 +19,18 @@
     "threejs",
     "web-audio-api",
     "3d",
-    "music"
+    "music",
+    "game-of-life",
+    "audio-reactive"
   ],
-  "author": "",
-  "license": "MIT"
+  "author": "Giovanny Guarin <giovannyguarin@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.1",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "three": "^0.152.0"
+  }
 }

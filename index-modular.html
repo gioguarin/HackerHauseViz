@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HackerHausVisualizer - Vite</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+<body>
+    <div id="loading">Initializing...</div>
+    <div class="error-message" id="error-message"></div>
+
+    <canvas id="banner-canvas"></canvas>
+    <div id="canvas-container"></div>
+
+    <div class="control-panel" id="control-panel">
+        <h2>HACKERHAUSVISUALIZER</h2>
+
+        <div class="control-group">
+            <div class="dropdown" id="mic-dropdown">
+                <button id="mic-btn">🎤 Microphone</button>
+                <div class="dropdown-content" id="mic-devices"></div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="dropdown" id="output-dropdown">
+                <button id="output-btn">🔊 Output Device</button>
+                <div class="dropdown-content" id="output-devices"></div>
+            </div>
+            <button id="refresh-devices-btn" style="margin-top: 5px; font-size: 11px; padding: 5px;">🔄 Refresh Devices</button>
+        </div>
+
+        <div class="control-group">
+            <label>Audio/Video File:</label>
+            <input type="file" id="file-input" accept="audio/*,video/*">
+        </div>
+
+        <div class="control-group">
+            <label>Stream URL:</label>
+            <input type="text" id="stream-input" placeholder="Paste audio stream URL">
+            <button id="stream-btn">Load Stream</button>
+        </div>
+
+        <div class="control-group">
+            <button id="dnb-stream-btn">🎵 Drum & Bass Radio</button>
+        </div>
+
+        <div class="control-group">
+            <button id="stop-btn">⏹ Stop Audio</button>
+        </div>
+
+        <div class="control-group">
+            <label>Sensitivity: <span class="slider-value" id="sensitivity-value">5</span></label>
+            <input type="range" id="sensitivity-slider" min="1" max="10" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Color Speed: <span class="slider-value" id="color-speed-value">5</span></label>
+            <input type="range" id="color-speed-slider" min="1" max="10" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Toggles:</label>
+            <div class="toggle-group">
+                <button id="gol-toggle" class="active">Game of Life</button>
+                <button id="text-toggle" class="active">Story Text</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Custom Banner Text:</label>
+            <input type="text" id="custom-text-input" placeholder="Enter your message...">
+            <button id="custom-text-btn">Update Banner</button>
+        </div>
+
+        <div class="control-group">
+            <button id="theme-btn">Switch Theme (P)</button>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <h3>AUDIO STATUS</h3>
+        <div class="status-item">Source: <span id="audio-source">None</span></div>
+        <div class="status-item">Output: <span id="audio-output">Default</span></div>
+        <div class="status-item">Theme: <span id="current-theme">Space</span></div>
+        <div class="status-item">FPS: <span id="fps-counter">60</span></div>
+    </div>
+
+    <div class="keyboard-hint">
+        SPACE: Toggle UI | P: Theme | C: Cinema | [-]: Slower | [+]: Faster | Dbl-Click: Rotate
+    </div>
+
+    <button class="mobile-toggle-btn" id="mobile-toggle-btn">☰</button>
+
+    <!-- ES6 Module Entry Point -->
+    <script type="module" src="src/js/main.js"></script>
+</body>
+</html>
