@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HackerHausVisualizer</title>
+    <title>HackerHausVisualizer - CDN</title>
     <style>
         * {
             margin: 0;
@@ -63,28 +63,48 @@
 
         @media (max-width: 768px) {
             .control-panel {
-                top: 10px;
-                left: 10px;
-                right: 10px;
-                min-width: auto;
-                max-width: calc(100vw - 20px);
-                padding: 15px;
+                /* Full-screen overlay on mobile for better visibility */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+                padding: 20px;
+                padding-bottom: 80px; /* Space for hamburger button */
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                /* Always hidden on mobile unless explicitly made visible */
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(100%);
+                transition: opacity 0.3s, transform 0.3s;
+            }
+
+            .control-panel.visible {
+                opacity: 1;
+                pointer-events: auto;
+                transform: translateY(0);
             }
         }
 
-        .control-panel.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        /* Desktop visibility rules */
+        @media (min-width: 769px) {
+            .control-panel.hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
 
-        .control-panel:not(.visible) {
-            opacity: 0;
-            pointer-events: none;
-        }
+            .control-panel:not(.visible) {
+                opacity: 0;
+                pointer-events: none;
+            }
 
-        .control-panel.visible {
-            opacity: 1;
-            pointer-events: auto;
+            .control-panel.visible {
+                opacity: 1;
+                pointer-events: auto;
+            }
         }
 
         .control-panel h2 {
@@ -206,23 +226,23 @@
             transition: opacity 0.3s;
         }
 
-        .status-panel:not(.visible) {
-            opacity: 0;
-            pointer-events: none;
-        }
+        /* Desktop visibility rules for status panel */
+        @media (min-width: 769px) {
+            .status-panel:not(.visible) {
+                opacity: 0;
+                pointer-events: none;
+            }
 
-        .status-panel.visible {
-            opacity: 1;
-            pointer-events: auto;
+            .status-panel.visible {
+                opacity: 1;
+                pointer-events: auto;
+            }
         }
 
         @media (max-width: 768px) {
             .status-panel {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-                min-width: auto;
-                padding: 10px;
+                /* Hide status panel completely on mobile - not needed */
+                display: none !important;
             }
         }
 
@@ -344,7 +364,7 @@
             position: fixed;
             bottom: 20px;
             left: 20px;
-            z-index: 4;
+            z-index: 10; /* Higher z-index to stay above control panel */
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -356,13 +376,24 @@
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
             backdrop-filter: blur(10px);
             -webkit-tap-highlight-color: rgba(0, 255, 255, 0.3);
+            transition: background 0.3s, transform 0.2s;
         }
 
         .mobile-toggle-btn:active {
             transform: scale(0.95);
         }
+
+        .mobile-toggle-btn.active {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #f00;
+            color: #f00;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
     </style>
-</head>
+
+    <!-- Import Map for Three.js -->
+    </head>
 <body>
     <div id="loading">Initializing...</div>
     <div class="error-message" id="error-message"></div>
@@ -445,1509 +476,1911 @@
     </div>
 
     <div class="keyboard-hint">
-        SPACE: Toggle UI | P: Switch Theme
+        SPACE: Toggle UI | P: Theme | C: Cinema | [-]: Slower | [+]: Faster | Dbl-Click: Rotate
     </div>
 
     <button class="mobile-toggle-btn" id="mobile-toggle-btn">☰</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+    <!-- ES6 Module Entry Point -->
     <script>
-        class AudioVisualizer {
-            constructor() {
-                this.audioContext = null;
-                this.analyser = null;
-                this.dataArray = null;
-                this.bufferLength = null;
-                this.audioSource = null;
-                this.currentStream = null;
-                this.currentMediaElement = null;
-                this.selectedOutputDeviceId = null;
-                this.currentObjectURL = null;
 
-                this.scene = null;
-                this.camera = null;
-                this.renderer = null;
-                this.currentTheme = null;
-
-                this.sensitivity = 5;
-                this.colorSpeed = 5;
-                this.golEnabled = true;
-                this.textEnabled = true;
-                this.uiVisible = false;
-                this.activeDnBButton = false;
-                
-                this.cinemaMode = true;
-                this.lastUserInteraction = 0;
-                this.cinemaInactivityTimeout = 10000;
-                this.cinemaRotationSpeed = 0.0003;
-
-                this.fpsTime = 0;
-                this.fpsFrames = 0;
-                this.currentFPS = 60;
-
-                this.init();
-            }
-
-            init() {
-                this.setupThreeJS();
-                this.setupBanner();
-                this.setupUI();
-                this.setupKeyboard();
-                this.setupGameOfLife();
-
-                this.currentTheme = new SpaceTheme(this.scene, this.camera);
-
-                document.getElementById('loading').style.display = 'none';
-
-                this.animate();
-            }
-
-            setupThreeJS() {
-                this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x000000);
-
-                this.camera = new THREE.PerspectiveCamera(
-                    75,
-                    window.innerWidth / window.innerHeight,
-                    0.1,
-                    1000
-                );
-                this.camera.position.z = 30;
-
-                this.renderer = new THREE.WebGLRenderer({ antialias: true });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setPixelRatio(window.devicePixelRatio);
-                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
-
-                this.createStarfield();
-                this.setupCameraControls();
-                this.setupCinemaMode();
-
-                window.addEventListener('resize', () => this.onResize());
-            }
-
-            createStarfield() {
-                const starGeometry = new THREE.BufferGeometry();
-                const starCount = 5000;
-                const positions = new Float32Array(starCount * 3);
-                const colors = new Float32Array(starCount * 3);
-                const sizes = new Float32Array(starCount);
-
-                for (let i = 0; i < starCount; i++) {
-                    const i3 = i * 3;
-                    
-                    const radius = 200 + Math.random() * 300;
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.random() * Math.PI;
-                    
-                    positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
-                    positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                    positions[i3 + 2] = radius * Math.cos(phi);
-                    
-                    const brightness = 0.5 + Math.random() * 0.5;
-                    colors[i3] = brightness;
-                    colors[i3 + 1] = brightness;
-                    colors[i3 + 2] = brightness;
-                    
-                    sizes[i] = Math.random() * 2 + 0.5;
-                }
-
-                starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-                const starMaterial = new THREE.PointsMaterial({
-                    size: 1.5,
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.8,
-                    sizeAttenuation: true,
-                    blending: THREE.AdditiveBlending
-                });
-
-                this.starfield = new THREE.Points(starGeometry, starMaterial);
-                this.scene.add(this.starfield);
-                
-                console.log('[Starfield] Created ' + starCount + ' stars');
-            }
-
-            setupCameraControls() {
-                this.isDragging = false;
-                this.previousTouch = null;
-                this.cameraRotation = { x: 0, y: 0 };
-                this.cameraDistance = 30;
-                this.touchStartDistance = null;
-                
-                this.lastTapTime = 0;
-                this.doubleTapThreshold = 300;
-                this.autoRotateActive = false;
-                this.autoRotateDirection = 1;
-
-                const canvas = this.renderer.domElement;
-
-                canvas.addEventListener('mousedown', (e) => {
-                    this.isDragging = true;
-                    this.previousTouch = { x: e.clientX, y: e.clientY };
-                });
-
-                canvas.addEventListener('mousemove', (e) => {
-                    if (!this.isDragging) return;
-                    
-                    const deltaX = e.clientX - this.previousTouch.x;
-                    const deltaY = e.clientY - this.previousTouch.y;
-                    
-                    this.cameraRotation.y += deltaX * 0.005;
-                    this.cameraRotation.x += deltaY * 0.005;
-                    
-                    this.cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraRotation.x));
-                    
-                    this.updateCameraPosition();
-                    
-                    this.previousTouch = { x: e.clientX, y: e.clientY };
-                });
-
-                canvas.addEventListener('mouseup', () => {
-                    this.isDragging = false;
-                });
-
-                canvas.addEventListener('mouseleave', () => {
-                    this.isDragging = false;
-                });
-
-                canvas.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    this.cameraDistance += e.deltaY * 0.05;
-                    this.cameraDistance = Math.max(10, Math.min(100, this.cameraDistance));
-                    this.updateCameraPosition();
-                });
-
-                canvas.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 1) {
-                        const currentTime = Date.now();
-                        const timeSinceLastTap = currentTime - this.lastTapTime;
-                        
-                        if (timeSinceLastTap < this.doubleTapThreshold && timeSinceLastTap > 0) {
-                            this.handleDoubleTap();
-                            this.lastTapTime = 0;
-                        } else {
-                            this.lastTapTime = currentTime;
-                            this.isDragging = true;
-                            this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                        }
-                    } else if (e.touches.length === 2) {
-                        this.isDragging = false;
-                        const dx = e.touches[0].clientX - e.touches[1].clientX;
-                        const dy = e.touches[0].clientY - e.touches[1].clientY;
-                        this.touchStartDistance = Math.sqrt(dx * dx + dy * dy);
-                    }
-                });
-
-                canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    
-                    if (e.touches.length === 1 && this.isDragging) {
-                        const deltaX = e.touches[0].clientX - this.previousTouch.x;
-                        const deltaY = e.touches[0].clientY - this.previousTouch.y;
-                        
-                        this.cameraRotation.y += deltaX * 0.005;
-                        this.cameraRotation.x += deltaY * 0.005;
-                        
-                        this.cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraRotation.x));
-                        
-                        this.updateCameraPosition();
-                        
-                        this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    } else if (e.touches.length === 2 && this.touchStartDistance) {
-                        const dx = e.touches[0].clientX - e.touches[1].clientX;
-                        const dy = e.touches[0].clientY - e.touches[1].clientY;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        const delta = this.touchStartDistance - distance;
-                        this.cameraDistance += delta * 0.1;
-                        this.cameraDistance = Math.max(10, Math.min(100, this.cameraDistance));
-                        
-                        this.updateCameraPosition();
-                        
-                        this.touchStartDistance = distance;
-                    }
-                }, { passive: false });
-
-                canvas.addEventListener('touchend', () => {
-                    this.isDragging = false;
-                    this.touchStartDistance = null;
-                });
-            }
-
-            updateCameraPosition() {
-                const x = this.cameraDistance * Math.sin(this.cameraRotation.y) * Math.cos(this.cameraRotation.x);
-                const y = this.cameraDistance * Math.sin(this.cameraRotation.x);
-                const z = this.cameraDistance * Math.cos(this.cameraRotation.y) * Math.cos(this.cameraRotation.x);
-                
-                this.camera.position.set(x, y, z);
-                this.camera.lookAt(0, 0, 0);
-            }
-            
-            handleDoubleTap() {
-                if (this.autoRotateActive) {
-                    this.autoRotateActive = false;
-                    console.log('[DoubleTap] Auto-rotation stopped');
-                } else {
-                    this.autoRotateActive = true;
-                    this.autoRotateDirection *= -1;
-                    console.log('[DoubleTap] Auto-rotation started - direction: ' + (this.autoRotateDirection > 0 ? 'clockwise' : 'counter-clockwise'));
-                }
-            }
-            
-            updateAutoRotate() {
-                if (this.autoRotateActive) {
-                    this.cameraRotation.y += 0.01 * this.autoRotateDirection;
-                    this.updateCameraPosition();
-                }
-            }
-            
-            setupCinemaMode() {
-                const interactionEvents = ['mousedown', 'mousemove', 'wheel', 'touchstart', 'touchmove', 'keydown'];
-                
-                interactionEvents.forEach(eventType => {
-                    window.addEventListener(eventType, () => {
-                        if (this.cinemaMode) {
-                            console.log('[CinemaMode] User interaction detected - disabling cinema mode');
-                            this.cinemaMode = false;
-                        }
-                        this.lastUserInteraction = performance.now();
-                    });
-                });
-                
-                console.log('[CinemaMode] Enabled - camera will auto-rotate until user interaction');
-            }
-            
-            updateCinemaMode() {
-                const now = performance.now();
-                const timeSinceInteraction = now - this.lastUserInteraction;
-                
-                if (!this.cinemaMode && timeSinceInteraction > this.cinemaInactivityTimeout) {
-                    console.log('[CinemaMode] Re-enabling after ' + (timeSinceInteraction / 1000).toFixed(1) + 's of inactivity');
-                    this.cinemaMode = true;
-                }
-                
-                if (this.cinemaMode) {
-                    this.cameraRotation.y += this.cinemaRotationSpeed;
-                    this.updateCameraPosition();
-                }
-            }
-
-            setupBanner() {
-                this.banner = new NeonBanner();
-            }
-
-            setupGameOfLife() {
-                this.gol = new GameOfLife(this.scene);
-            }
-
-            setupUI() {
-                document.getElementById('mic-btn').addEventListener('click', () => {
-                    this.toggleMicDropdown();
-                });
-
-                document.getElementById('output-btn').addEventListener('click', () => {
-                    this.toggleOutputDropdown();
-                });
-
-                document.getElementById('refresh-devices-btn').addEventListener('click', () => {
-                    this.loadMicDevices();
-                    this.loadOutputDevices();
-                    this.detectActiveOutputDevice();
-                });
-
-                this.loadMicDevices();
-                this.loadOutputDevices();
-
-                document.getElementById('file-input').addEventListener('change', (e) => {
-                    this.loadFile(e.target.files[0]);
-                });
-
-                document.getElementById('stream-btn').addEventListener('click', () => {
-                    const url = document.getElementById('stream-input').value;
-                    this.loadStream(url);
-                });
-
-                document.getElementById('dnb-stream-btn').addEventListener('click', () => {
-                    this.loadDnBStream();
-                });
-
-                document.getElementById('stop-btn').addEventListener('click', () => {
-                    this.stopAudio();
-                });
-
-                document.getElementById('sensitivity-slider').addEventListener('input', (e) => {
-                    this.sensitivity = parseInt(e.target.value);
-                    document.getElementById('sensitivity-value').textContent = this.sensitivity;
-                });
-
-                document.getElementById('color-speed-slider').addEventListener('input', (e) => {
-                    this.colorSpeed = parseInt(e.target.value);
-                    document.getElementById('color-speed-value').textContent = this.colorSpeed;
-                });
-
-                document.getElementById('gol-toggle').addEventListener('click', (e) => {
-                    this.golEnabled = !this.golEnabled;
-                    e.target.classList.toggle('active');
-                    this.gol.setVisible(this.golEnabled);
-                });
-
-                document.getElementById('text-toggle').addEventListener('click', (e) => {
-                    this.textEnabled = !this.textEnabled;
-                    e.target.classList.toggle('active');
-                    this.banner.setVisible(this.textEnabled);
-                });
-
-                document.getElementById('theme-btn').addEventListener('click', () => {
-                    this.switchTheme();
-                });
-
-                document.getElementById('custom-text-btn').addEventListener('click', () => {
-                    const input = document.getElementById('custom-text-input');
-                    const customText = input.value;
-                    
-                    if (customText.length > 500) {
-                        this.showError('Text too long (max 500 characters)');
-                        return;
-                    }
-                    
-                    const sanitized = customText.replace(/[^A-Za-z0-9\s.:\-]/g, '');
-                    
-                    if (sanitized.trim()) {
-                        this.banner.setText(sanitized);
-                        input.value = sanitized;
-                        console.log('[CustomText] Banner updated: ' + sanitized);
-                    } else {
-                        this.banner.resetText();
-                        input.value = '';
-                        console.log('[CustomText] Banner reset to default');
-                    }
-                });
-
-                document.getElementById('custom-text-input').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        document.getElementById('custom-text-btn').click();
-                    }
-                });
-
-                document.getElementById('mobile-toggle-btn').addEventListener('click', () => {
-                    this.toggleUI();
-                });
-            }
-
-            setupKeyboard() {
-                document.addEventListener('keydown', (e) => {
-                    if (e.code === 'Space') {
-                        e.preventDefault();
-                        this.toggleUI();
-                    } else if (e.code === 'KeyP') {
-                        this.switchTheme();
-                    }
-                });
-            }
-
-            async loadMicDevices() {
-                try {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const audioDevices = devices.filter(d => d.kind === 'audioinput');
-
-                    const container = document.getElementById('mic-devices');
-                    container.innerHTML = '';
-
-                    audioDevices.forEach(device => {
-                        const btn = document.createElement('button');
-                        btn.textContent = device.label || `Microphone ${device.deviceId.substr(0, 8)}`;
-                        btn.addEventListener('click', () => {
-                            this.startMicrophone(device.deviceId);
-                            this.toggleMicDropdown();
-                        });
-                        container.appendChild(btn);
-                    });
-                } catch (error) {
-                    this.showError('Failed to load microphone devices: ' + error.message);
-                }
-            }
-
-            toggleMicDropdown() {
-                document.getElementById('mic-dropdown').classList.toggle('active');
-            }
-
-            toggleOutputDropdown() {
-                document.getElementById('output-dropdown').classList.toggle('active');
-            }
-
-            async loadOutputDevices() {
-                try {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
-
-                    const container = document.getElementById('output-devices');
-                    container.innerHTML = '';
-
-                    const defaultBtn = document.createElement('button');
-                    defaultBtn.textContent = 'Default Output';
-                    defaultBtn.addEventListener('click', () => {
-                        this.selectOutputDevice(null, 'Default Output');
-                        this.toggleOutputDropdown();
-                    });
-                    container.appendChild(defaultBtn);
-
-                    audioOutputs.forEach(device => {
-                        const btn = document.createElement('button');
-                        btn.textContent = device.label || `Speaker ${device.deviceId.substr(0, 8)}`;
-                        btn.addEventListener('click', () => {
-                            this.selectOutputDevice(device.deviceId, btn.textContent);
-                            this.toggleOutputDropdown();
-                        });
-                        container.appendChild(btn);
-                    });
-
-                    this.detectActiveOutputDevice();
-                } catch (error) {
-                    this.showError('Failed to load output devices: ' + error.message);
-                }
-            }
-
-            async detectActiveOutputDevice() {
-                try {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
-
-                    if (this.currentMediaElement && typeof this.currentMediaElement.sinkId !== 'undefined') {
-                        const activeSinkId = this.currentMediaElement.sinkId;
-
-                        if (activeSinkId === '') {
-                            document.getElementById('audio-output').textContent = 'Default Output';
-                        } else {
-                            const activeDevice = audioOutputs.find(d => d.deviceId === activeSinkId);
-                            if (activeDevice) {
-                                document.getElementById('audio-output').textContent = activeDevice.label || 'Unknown Device';
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Failed to detect active output device:', error);
-                }
-            }
-
-            async selectOutputDevice(deviceId, deviceName) {
-                this.selectedOutputDeviceId = deviceId;
-                document.getElementById('audio-output').textContent = deviceName;
-
-                if (this.currentMediaElement && typeof this.currentMediaElement.setSinkId === 'function') {
-                    try {
-                        await this.currentMediaElement.setSinkId(deviceId || '');
-                    } catch (error) {
-                        this.showError('Failed to set output device: ' + error.message);
-                    }
-                }
-            }
-
-            async startMicrophone(deviceId = null) {
-                try {
-                    this.stopAudio();
-
-                    const constraints = {
-                        audio: deviceId ? { deviceId: { exact: deviceId } } : true
-                    };
-
-                    this.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-
-                    this.setupAnalyser();
-                    this.audioSource = this.audioContext.createMediaStreamSource(this.currentStream);
-                    this.audioSource.connect(this.analyser);
-
-                    const device = this.currentStream.getAudioTracks()[0];
-                    document.getElementById('audio-source').textContent = device.label || 'Microphone';
-
-                } catch (error) {
-                    this.showError('Microphone access failed: ' + error.message);
-                }
-            }
-
-            async loadFile(file) {
-                if (!file) return;
-                
-                const maxSize = 500 * 1024 * 1024;
-                if (file.size > maxSize) {
-                    this.showError('File too large (max 500MB)');
-                    return;
-                }
-                
-                const allowedTypes = ['audio/', 'video/'];
-                if (!allowedTypes.some(type => file.type.startsWith(type))) {
-                    this.showError('Invalid file type. Please upload audio or video files.');
-                    return;
-                }
-
-                try {
-                    this.stopAudio();
-
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-
-                    this.setupAnalyser();
-
-                    const audio = new Audio();
-                    this.currentObjectURL = URL.createObjectURL(file);
-                    audio.src = this.currentObjectURL;
-                    audio.loop = true;
-                    this.currentMediaElement = audio;
-
-                    if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
-                        try {
-                            await audio.setSinkId(this.selectedOutputDeviceId);
-                        } catch (error) {
-                            console.warn('Failed to set output device:', error);
-                        }
-                    }
-
-                    this.audioSource = this.audioContext.createMediaElementSource(audio);
-                    this.audioSource.connect(this.analyser);
-                    this.analyser.connect(this.audioContext.destination);
-
-                    await audio.play();
-
-                    document.getElementById('audio-source').textContent = file.name;
-                    this.detectActiveOutputDevice();
-
-                } catch (error) {
-                    this.showError('File loading failed: ' + error.message);
-                }
-            }
-
-            async loadDnBStream() {
-                const streamUrl = 'http://65.108.124.70:7200/stream';
-                const btn = document.getElementById('dnb-stream-btn');
-                
-                if (window.location.protocol === 'https:' && streamUrl.startsWith('http:')) {
-                    this.showError('⚠️ Mixed Content Error: Cannot load HTTP stream on HTTPS page. The D&B stream must be served over HTTPS to work on GitHub Pages.');
-                    return;
-                }
-                
-                btn.disabled = true;
-                btn.classList.add('loading');
-                btn.textContent = '⏳ Connecting...';
-                
-                try {
-                    await this.loadStream(streamUrl);
-                    btn.textContent = '▶️ D&B Playing';
-                    btn.classList.remove('loading');
-                    btn.classList.add('active');
-                    this.activeDnBButton = true;
-                } catch (error) {
-                    btn.disabled = false;
-                    btn.classList.remove('loading');
-                    btn.textContent = '🎵 Drum & Bass Radio';
-                    
-                    if (error.name === 'NotAllowedError') {
-                        this.showError('Audio playback blocked. Please interact with the page first, then try again.');
-                    } else if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
-                        this.showError('CORS Error: The stream server does not allow cross-origin access. Contact the radio station administrator.');
-                    } else if (error.message.includes('network') || error.message.includes('NetworkError')) {
-                        this.showError('Network Error: Cannot reach the D&B stream. Check if the radio station is online.');
-                    } else {
-                        this.showError('Failed to load D&B stream: ' + error.message);
-                    }
-                }
-            }
-
-            validateURL(url) {
-                try {
-                    const urlObj = new URL(url);
-                    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-                        throw new Error('Only HTTP and HTTPS protocols are allowed');
-                    }
-                    if (url.length > 2048) {
-                        throw new Error('URL too long (max 2048 characters)');
-                    }
-                    return true;
-                } catch (error) {
-                    throw new Error('Invalid URL: ' + error.message);
-                }
-            }
-
-            async loadStream(url) {
-                if (!url) {
-                    this.showError('Please enter a stream URL');
-                    return;
-                }
-                
-                try {
-                    this.validateURL(url);
-                } catch (error) {
-                    this.showError(error.message);
-                    return;
-                }
-
-                try {
-                    this.stopAudio();
-
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-                    
-                    if (this.audioContext.state === 'suspended') {
-                        await this.audioContext.resume();
-                    }
-
-                    this.setupAnalyser();
-
-                    const audio = new Audio();
-                    audio.src = url;
-                    audio.crossOrigin = 'anonymous';
-                    audio.loop = false;
-                    this.currentMediaElement = audio;
-
-                    if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
-                        try {
-                            await audio.setSinkId(this.selectedOutputDeviceId);
-                        } catch (error) {
-                            console.warn('Failed to set output device:', error);
-                        }
-                    }
-
-                    this.audioSource = this.audioContext.createMediaElementSource(audio);
-                    this.audioSource.connect(this.analyser);
-                    this.analyser.connect(this.audioContext.destination);
-
-                    await audio.play();
-
-                    const urlObj = new URL(url);
-                    document.getElementById('audio-source').textContent = `Stream: ${urlObj.hostname}`;
-                    this.detectActiveOutputDevice();
-
-                } catch (error) {
-                    throw error;
-                }
-            }
-
-            setupAnalyser() {
-                if (this.analyser) {
-                    this.analyser.disconnect();
-                }
-
-                this.analyser = this.audioContext.createAnalyser();
-                this.analyser.fftSize = 2048;
-                this.bufferLength = this.analyser.frequencyBinCount;
-                this.dataArray = new Uint8Array(this.bufferLength);
-                this.analyser.smoothingTimeConstant = 0.8;
-            }
-
-            stopAudio() {
-                if (this.audioSource) {
-                    this.audioSource.disconnect();
-                    this.audioSource = null;
-                }
-
-                if (this.currentStream) {
-                    this.currentStream.getTracks().forEach(track => track.stop());
-                    this.currentStream = null;
-                }
-
-                if (this.currentMediaElement) {
-                    this.currentMediaElement.pause();
-                    this.currentMediaElement.src = '';
-                    this.currentMediaElement = null;
-                }
-                
-                if (this.currentObjectURL) {
-                    URL.revokeObjectURL(this.currentObjectURL);
-                    this.currentObjectURL = null;
-                    console.log('[Memory] Object URL revoked');
-                }
-                
-                const dnbBtn = document.getElementById('dnb-stream-btn');
-                if (dnbBtn && this.activeDnBButton) {
-                    dnbBtn.disabled = false;
-                    dnbBtn.classList.remove('active', 'loading');
-                    dnbBtn.textContent = '🎵 Drum & Bass Radio';
-                    this.activeDnBButton = false;
-                }
-
-                document.getElementById('audio-source').textContent = 'None';
-            }
-
-            switchTheme() {
-                if (this.currentTheme) {
-                    this.currentTheme.dispose();
-                }
-
-                if (this.currentTheme instanceof SpaceTheme) {
-                    this.currentTheme = new DysonSphereTheme(this.scene, this.camera);
-                    document.getElementById('current-theme').textContent = 'Dyson Sphere';
-                } else {
-                    this.currentTheme = new SpaceTheme(this.scene, this.camera);
-                    document.getElementById('current-theme').textContent = 'Space';
-                }
-            }
-
-            toggleUI() {
-                this.uiVisible = !this.uiVisible;
-                
-                document.getElementById('control-panel').classList.toggle('visible');
-                document.getElementById('mobile-toggle-btn').textContent = this.uiVisible ? '✕' : '☰';
-                const statusPanel = document.querySelector('.status-panel');
-                if (statusPanel) {
-                    statusPanel.classList.toggle('visible');
-                }
-            }
-
-            getFrequencyData() {
-                if (!this.analyser) return { bass: 0, mid: 0, treble: 0, array: [] };
-
-                this.analyser.getByteFrequencyData(this.dataArray);
-
-                const bassEnd = Math.floor(this.bufferLength * 0.1);
-                const midEnd = Math.floor(this.bufferLength * 0.4);
-
-                let bass = 0, mid = 0, treble = 0;
-
-                for (let i = 0; i < bassEnd; i++) bass += this.dataArray[i];
-                for (let i = bassEnd; i < midEnd; i++) mid += this.dataArray[i];
-                for (let i = midEnd; i < this.bufferLength; i++) treble += this.dataArray[i];
-
-                bass = (bass / bassEnd / 255) * this.sensitivity;
-                mid = (mid / (midEnd - bassEnd) / 255) * this.sensitivity;
-                treble = (treble / (this.bufferLength - midEnd) / 255) * this.sensitivity;
-
-                return {
-                    bass: Math.min(bass, 3),
-                    mid: Math.min(mid, 3),
-                    treble: Math.min(treble, 3),
-                    array: Array.from(this.dataArray)
-                };
-            }
-
-            updateFPS() {
-                this.fpsFrames++;
-                const now = performance.now();
-                if (now >= this.fpsTime + 1000) {
-                    this.currentFPS = Math.round((this.fpsFrames * 1000) / (now - this.fpsTime));
-                    this.fpsTime = now;
-                    this.fpsFrames = 0;
-                    document.getElementById('fps-counter').textContent = this.currentFPS;
-                }
-            }
-
-            animate() {
-                requestAnimationFrame(() => this.animate());
-
-                const freqData = this.getFrequencyData();
-                
-                this.updateCinemaMode();
-                this.updateAutoRotate();
-
-                if (this.currentTheme) {
-                    this.currentTheme.update(freqData, this.colorSpeed);
-                }
-
-                if (this.golEnabled && this.gol) {
-                    this.gol.update(freqData.bass);
-                }
-
-                if (this.textEnabled && this.banner) {
-                    const avgAudio = (freqData.bass + freqData.mid + freqData.treble) / 3;
-                    this.banner.update(avgAudio, this.colorSpeed);
-                }
-
-                this.renderer.render(this.scene, this.camera);
-                this.updateFPS();
-            }
-
-            onResize() {
-                this.camera.aspect = window.innerWidth / window.innerHeight;
-                this.camera.updateProjectionMatrix();
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                if (this.banner) this.banner.onResize();
-            }
-
-            showError(message) {
-                const errorEl = document.getElementById('error-message');
-                const sanitized = String(message).replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 200);
-                errorEl.textContent = sanitized;
-                errorEl.style.display = 'block';
-                setTimeout(() => {
-                    errorEl.style.display = 'none';
-                }, 5000);
-            }
+        // SpaceTheme
+        window.SpaceTheme = class SpaceTheme {
+    constructor(scene, camera) {
+        this.scene = scene;
+        this.camera = camera;
+        this.objects = [];
+        this.lights = [];
+        this.time = 0;
+
+        this.createOrb();
+        this.createRings();
+        this.createParticles();
+        this.createLights();
+    }
+
+    createOrb() {
+        const geometry = new THREE.SphereGeometry(3, 32, 32);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x00ffff,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.5,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        this.orb = new THREE.Mesh(geometry, material);
+        this.scene.add(this.orb);
+        this.objects.push(this.orb);
+    }
+
+    createRings() {
+        this.rings = [];
+        for (let i = 0; i < 5; i++) {
+            const radius = 8 + i * 3;
+            const geometry = new THREE.TorusGeometry(radius, 0.1, 16, 100);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.3
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = Math.PI / 2 + Math.random() * 0.5;
+            ring.rotation.y = Math.random() * Math.PI;
+            this.scene.add(ring);
+            this.rings.push({ mesh: ring, baseRotX: ring.rotation.x, baseRotY: ring.rotation.y });
+            this.objects.push(ring);
+        }
+    }
+
+    createParticles() {
+        const particleCount = 500;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            const radius = 15 + Math.random() * 10;
+
+            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            positions[i * 3 + 2] = radius * Math.cos(phi);
+
+            colors[i * 3] = 0;
+            colors[i * 3 + 1] = 1;
+            colors[i * 3 + 2] = 1;
         }
 
-        class SpaceTheme {
-            constructor(scene, camera) {
-                this.scene = scene;
-                this.camera = camera;
-                this.objects = [];
-                this.lights = [];
-                this.time = 0;
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-                this.createOrb();
-                this.createRings();
-                this.createParticles();
-                this.createLights();
-            }
+        const material = new THREE.PointsMaterial({
+            size: 0.2,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true
+        });
 
-            createOrb() {
-                const geometry = new THREE.SphereGeometry(3, 32, 32);
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0x00ffff,
-                    emissive: 0x00ffff,
-                    emissiveIntensity: 0.5,
-                    metalness: 0.8,
-                    roughness: 0.2
-                });
-                this.orb = new THREE.Mesh(geometry, material);
-                this.scene.add(this.orb);
-                this.objects.push(this.orb);
-            }
+        this.particles = new THREE.Points(geometry, material);
+        this.scene.add(this.particles);
+        this.objects.push(this.particles);
 
-            createRings() {
-                this.rings = [];
-                for (let i = 0; i < 5; i++) {
-                    const radius = 8 + i * 3;
-                    const geometry = new THREE.TorusGeometry(radius, 0.1, 16, 100);
-                    const material = new THREE.MeshStandardMaterial({
-                        color: 0x00ffff,
-                        emissive: 0x00ffff,
-                        emissiveIntensity: 0.3
-                    });
-                    const ring = new THREE.Mesh(geometry, material);
-                    ring.rotation.x = Math.PI / 2 + Math.random() * 0.5;
-                    ring.rotation.y = Math.random() * Math.PI;
-                    this.scene.add(ring);
-                    this.rings.push({ mesh: ring, baseRotX: ring.rotation.x, baseRotY: ring.rotation.y });
-                    this.objects.push(ring);
-                }
-            }
+        this.particleBasePositions = positions.slice();
+    }
 
-            createParticles() {
-                const particleCount = 500;
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(particleCount * 3);
-                const colors = new Float32Array(particleCount * 3);
+    createLights() {
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        this.scene.add(ambientLight);
+        this.lights.push(ambientLight);
 
-                for (let i = 0; i < particleCount; i++) {
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.random() * Math.PI;
-                    const radius = 15 + Math.random() * 10;
+        for (let i = 0; i < 3; i++) {
+            const light = new THREE.PointLight(0x00ffff, 1, 100);
+            this.scene.add(light);
+            this.lights.push(light);
+        }
+    }
 
-                    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-                    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                    positions[i * 3 + 2] = radius * Math.cos(phi);
+    update(freqData, colorSpeed) {
+        this.time += 0.01 * colorSpeed;
 
-                    colors[i * 3] = 0;
-                    colors[i * 3 + 1] = 1;
-                    colors[i * 3 + 2] = 1;
-                }
+        if (this.orb) {
+            const scale = 1 + freqData.bass * 0.5;
+            this.orb.scale.set(scale, scale, scale);
+            this.orb.material.emissiveIntensity = 0.5 + freqData.bass * 0.5;
 
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-                const material = new THREE.PointsMaterial({
-                    size: 0.2,
-                    vertexColors: true,
-                    blending: THREE.AdditiveBlending,
-                    transparent: true
-                });
-
-                this.particles = new THREE.Points(geometry, material);
-                this.scene.add(this.particles);
-                this.objects.push(this.particles);
-
-                this.particleBasePositions = positions.slice();
-            }
-
-            createLights() {
-                const ambientLight = new THREE.AmbientLight(0x404040);
-                this.scene.add(ambientLight);
-                this.lights.push(ambientLight);
-
-                for (let i = 0; i < 3; i++) {
-                    const light = new THREE.PointLight(0x00ffff, 1, 100);
-                    this.scene.add(light);
-                    this.lights.push(light);
-                }
-            }
-
-            update(freqData, colorSpeed) {
-                this.time += 0.01 * colorSpeed;
-
-                if (this.orb) {
-                    const scale = 1 + freqData.bass * 0.5;
-                    this.orb.scale.set(scale, scale, scale);
-                    this.orb.material.emissiveIntensity = 0.5 + freqData.bass * 0.5;
-
-                    const hue = (this.time * 0.1) % 1;
-                    this.orb.material.color.setHSL(hue, 1, 0.5);
-                    this.orb.material.emissive.setHSL(hue, 1, 0.5);
-                }
-
-                this.rings.forEach((ringData, i) => {
-                    const scale = 1 + (freqData.mid + freqData.treble) * 0.1;
-                    ringData.mesh.scale.set(scale, scale, scale);
-
-                    ringData.mesh.rotation.x = ringData.baseRotX + Math.sin(this.time * 0.3 + i) * 0.3;
-                    ringData.mesh.rotation.y = ringData.baseRotY + this.time * 0.1 * (i + 1);
-                    ringData.mesh.rotation.z += 0.005 * (i + 1) * colorSpeed;
-
-                    const hue = ((this.time * 0.1) + i * 0.2) % 1;
-                    ringData.mesh.material.color.setHSL(hue, 1, 0.5);
-                    ringData.mesh.material.emissive.setHSL(hue, 1, 0.5);
-                    ringData.mesh.material.emissiveIntensity = 0.3 + freqData.mid * 0.3;
-                });
-
-                if (this.particles) {
-                    const positions = this.particles.geometry.attributes.position.array;
-                    const colors = this.particles.geometry.attributes.color.array;
-
-                    for (let i = 0; i < positions.length / 3; i++) {
-                        if (i < freqData.array.length && Math.random() < 0.1) {
-                            const intensity = freqData.array[i] / 255;
-                            const scale = 1 + intensity * 0.5;
-
-                            positions[i * 3] = this.particleBasePositions[i * 3] * scale;
-                            positions[i * 3 + 1] = this.particleBasePositions[i * 3 + 1] * scale;
-                            positions[i * 3 + 2] = this.particleBasePositions[i * 3 + 2] * scale;
-
-                            const hue = (this.time * 0.1 + i * 0.01) % 1;
-                            const color = new THREE.Color().setHSL(hue, 1, 0.5);
-                            colors[i * 3] = color.r;
-                            colors[i * 3 + 1] = color.g;
-                            colors[i * 3 + 2] = color.b;
-                        }
-                    }
-
-                    this.particles.geometry.attributes.position.needsUpdate = true;
-                    this.particles.geometry.attributes.color.needsUpdate = true;
-                    this.particles.rotation.y += 0.001 * colorSpeed;
-                }
-
-                this.lights.forEach((light, i) => {
-                    if (i > 0) {
-                        const angle = this.time + (i * Math.PI * 2 / 3);
-                        const radius = 20 + freqData.bass * 10;
-                        light.position.x = Math.cos(angle) * radius;
-                        light.position.z = Math.sin(angle) * radius;
-                        light.position.y = Math.sin(this.time * 2) * 10;
-                        light.intensity = 1 + freqData.treble;
-
-                        const hue = (this.time * 0.1 + i * 0.3) % 1;
-                        light.color.setHSL(hue, 1, 0.5);
-                    }
-                });
-            }
-
-            dispose() {
-                this.objects.forEach(obj => {
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) obj.material.dispose();
-                    this.scene.remove(obj);
-                });
-
-                this.lights.forEach(light => {
-                    this.scene.remove(light);
-                });
-            }
+            const hue = (this.time * 0.1) % 1;
+            this.orb.material.color.setHSL(hue, 1, 0.5);
+            this.orb.material.emissive.setHSL(hue, 1, 0.5);
         }
 
-        class DysonSphereTheme {
-            constructor(scene, camera) {
-                this.scene = scene;
-                this.camera = camera;
-                this.objects = [];
-                this.lights = [];
-                this.time = 0;
+        this.rings.forEach((ringData, i) => {
+            const scale = 1 + (freqData.mid + freqData.treble) * 0.1;
+            ringData.mesh.scale.set(scale, scale, scale);
 
-                this.createSun();
-                this.createPanels();
-                this.createShell();
-                this.createLights();
+            ringData.mesh.rotation.x = ringData.baseRotX + Math.sin(this.time * 0.3 + i) * 0.3;
+            ringData.mesh.rotation.y = ringData.baseRotY + this.time * 0.1 * (i + 1);
+            ringData.mesh.rotation.z += 0.005 * (i + 1) * colorSpeed;
+
+            const hue = ((this.time * 0.1) + i * 0.2) % 1;
+            ringData.mesh.material.color.setHSL(hue, 1, 0.5);
+            ringData.mesh.material.emissive.setHSL(hue, 1, 0.5);
+            ringData.mesh.material.emissiveIntensity = 0.3 + freqData.mid * 0.3;
+        });
+
+        if (this.particles) {
+            const positions = this.particles.geometry.attributes.position.array;
+            const colors = this.particles.geometry.attributes.color.array;
+
+            for (let i = 0; i < positions.length / 3; i++) {
+                if (i < freqData.array.length && Math.random() < 0.1) {
+                    const intensity = freqData.array[i] / 255;
+                    const scale = 1 + intensity * 0.5;
+
+                    positions[i * 3] = this.particleBasePositions[i * 3] * scale;
+                    positions[i * 3 + 1] = this.particleBasePositions[i * 3 + 1] * scale;
+                    positions[i * 3 + 2] = this.particleBasePositions[i * 3 + 2] * scale;
+
+                    const hue = (this.time * 0.1 + i * 0.01) % 1;
+                    const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
             }
 
-            createSun() {
-                const geometry = new THREE.SphereGeometry(4, 32, 32);
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0xff8800,
-                    emissive: 0xff8800,
-                    emissiveIntensity: 1,
-                    metalness: 0.5,
-                    roughness: 0.3
-                });
-                this.sun = new THREE.Mesh(geometry, material);
-                this.scene.add(this.sun);
-                this.objects.push(this.sun);
+            this.particles.geometry.attributes.position.needsUpdate = true;
+            this.particles.geometry.attributes.color.needsUpdate = true;
+            this.particles.rotation.y += 0.001 * colorSpeed;
+        }
+
+        this.lights.forEach((light, i) => {
+            if (i > 0) {
+                const angle = this.time + (i * Math.PI * 2 / 3);
+                const radius = 20 + freqData.bass * 10;
+                light.position.x = Math.cos(angle) * radius;
+                light.position.z = Math.sin(angle) * radius;
+                light.position.y = Math.sin(this.time * 2) * 10;
+                light.intensity = 1 + freqData.treble;
+
+                const hue = (this.time * 0.1 + i * 0.3) % 1;
+                light.color.setHSL(hue, 1, 0.5);
             }
+        });
+    }
 
-            createPanels() {
-                this.panels = [];
-                const panelCount = 200;
+    dispose() {
+        this.objects.forEach(obj => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+            this.scene.remove(obj);
+        });
 
-                for (let i = 0; i < panelCount; i++) {
-                    const geometry = new THREE.PlaneGeometry(0.5, 0.8);
+        this.lights.forEach(light => {
+            this.scene.remove(light);
+        });
+    }
+}
+
+SpaceTheme;
+
+
+        // DysonSphereTheme
+        window.DysonSphereTheme = class DysonSphereTheme {
+    constructor(scene, camera) {
+        this.scene = scene;
+        this.camera = camera;
+        this.objects = [];
+        this.lights = [];
+        this.beams = [];
+        this.time = 0;
+
+        console.log('DysonSphereTheme: Initializing with 3 layers and beams');
+        this.createSun();
+        this.createPanels();
+        this.createShell();
+        this.createLights();
+        this.createBeams();
+        console.log(`DysonSphereTheme: Created ${this.panels.length} panels and ${this.beams.length} beam objects`);
+    }
+
+    createSun() {
+        const geometry = new THREE.SphereGeometry(4, 32, 32);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xff8800,
+            emissive: 0xff8800,
+            emissiveIntensity: 1,
+            metalness: 0.5,
+            roughness: 0.3
+        });
+        this.sun = new THREE.Mesh(geometry, material);
+        this.scene.add(this.sun);
+        this.objects.push(this.sun);
+    }
+
+    createPanels() {
+        this.panels = [];
+
+        // Create panel group for easier management
+        this.panelGroup = new THREE.Group();
+
+        // Three layers of panels at different radii
+        const layers = [
+            { radius: 8, panelSize: 0.8, opacity: 0.9 },   // Inner layer
+            { radius: 12, panelSize: 1.2, opacity: 0.85 },  // Middle layer
+            { radius: 16, panelSize: 1.4, opacity: 0.8 }    // Outer layer
+        ];
+
+        const numRings = 10;  // Number of latitude rings per layer
+        const basePanelsPerRing = 16;  // Base panels per ring
+
+        layers.forEach((layer, layerIndex) => {
+            // Offset the starting positions for each layer to avoid overlap
+            const thetaOffset = (layerIndex * Math.PI) / 6; // 30 degree offset per layer
+
+            for (let ringIndex = 0; ringIndex < numRings; ringIndex++) {
+                // Calculate latitude (phi) for uniform distribution
+                const phi = (Math.PI * (ringIndex + 1)) / (numRings + 1);
+
+                // Adjust panels per ring based on latitude to maintain uniform spacing
+                const ringRadius = Math.sin(phi);
+                const adjustedPanelsPerRing = Math.floor(basePanelsPerRing * ringRadius) || 1;
+
+                for (let panelIndex = 0; panelIndex < adjustedPanelsPerRing; panelIndex++) {
+                    // Calculate longitude (theta) with offset for each layer
+                    const theta = (2 * Math.PI * panelIndex) / adjustedPanelsPerRing + thetaOffset;
+
+                    // Create square panel geometry
+                    const geometry = new THREE.BoxGeometry(layer.panelSize, layer.panelSize, 0.1);
+
+                    // Vary the color slightly for each layer
+                    const hueShift = layerIndex * 10;
                     const material = new THREE.MeshStandardMaterial({
-                        color: 0xffaa00,
-                        emissive: 0xff8800,
+                        color: new THREE.Color().setHSL((30 + hueShift) / 360, 1, 0.5),
+                        emissive: new THREE.Color().setHSL((30 + hueShift) / 360, 1, 0.4),
                         emissiveIntensity: 0.3,
-                        metalness: 0.8,
-                        roughness: 0.2,
+                        metalness: 0.9,
+                        roughness: 0.1,
+                        transparent: true,
+                        opacity: layer.opacity,
                         side: THREE.DoubleSide
                     });
+
                     const panel = new THREE.Mesh(geometry, material);
 
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.random() * Math.PI;
-                    const radius = 12;
+                    // Calculate position on sphere
+                    const x = layer.radius * Math.sin(phi) * Math.cos(theta);
+                    const y = layer.radius * Math.cos(phi); // Y based on latitude
+                    const z = layer.radius * Math.sin(phi) * Math.sin(theta);
 
-                    panel.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                    panel.position.y = radius * Math.sin(phi) * Math.sin(theta);
-                    panel.position.z = radius * Math.cos(phi);
+                    panel.position.set(x, y, z);
 
+                    // Orient panel to face center (normal to sphere surface)
                     panel.lookAt(0, 0, 0);
 
-                    this.scene.add(panel);
+                    this.panelGroup.add(panel);
                     this.panels.push({
                         mesh: panel,
+                        initialTheta: theta,
                         theta: theta,
                         phi: phi,
-                        speed: 0.001 + Math.random() * 0.002
+                        layerIndex: layerIndex,
+                        ringIndex: ringIndex,
+                        panelIndex: panelIndex,
+                        // Vary speed slightly by layer - inner layers move faster
+                        speed: 0.002 - (layerIndex * 0.0003) + (ringIndex * 0.00005),
+                        radius: layer.radius,
+                        baseRadius: layer.radius
                     });
                     this.objects.push(panel);
                 }
             }
+        });
 
-            createShell() {
-                const geometry = new THREE.SphereGeometry(20, 32, 32);
-                const material = new THREE.MeshBasicMaterial({
-                    color: 0xffaa00,
-                    wireframe: true,
-                    transparent: true,
-                    opacity: 0.2
-                });
-                this.shell = new THREE.Mesh(geometry, material);
-                this.scene.add(this.shell);
-                this.objects.push(this.shell);
+        this.scene.add(this.panelGroup);
+    }
+
+    createShell() {
+        const geometry = new THREE.SphereGeometry(22, 32, 32);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.15
+        });
+        this.shell = new THREE.Mesh(geometry, material);
+        this.scene.add(this.shell);
+        this.objects.push(this.shell);
+    }
+
+    createLights() {
+        const ambientLight = new THREE.AmbientLight(0x402000);
+        this.scene.add(ambientLight);
+        this.lights.push(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xff8800, 2, 100);
+        this.scene.add(sunLight);
+        this.lights.push(sunLight);
+    }
+
+    createBeams() {
+        // Pre-create a pool of beam objects for performance
+        const maxBeams = 10;
+
+        for (let i = 0; i < maxBeams; i++) {
+            // Create beam group for main beam + glow effect
+            const beamGroup = new THREE.Group();
+
+            // Main beam - increased size by 15%
+            const mainGeometry = new THREE.CylinderGeometry(0.06, 0.17, 1, 8);
+            const mainMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffdd00,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending
+            });
+            const mainBeam = new THREE.Mesh(mainGeometry, mainMaterial);
+
+            // Glow effect - larger, softer beam
+            const glowGeometry = new THREE.CylinderGeometry(0.15, 0.35, 1, 8);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending
+            });
+            const glowBeam = new THREE.Mesh(glowGeometry, glowMaterial);
+
+            beamGroup.add(mainBeam);
+            beamGroup.add(glowBeam);
+            beamGroup.visible = false;
+            this.scene.add(beamGroup);
+
+            this.beams.push({
+                mesh: beamGroup,
+                mainBeam: mainBeam,
+                glowBeam: glowBeam,
+                active: false,
+                startTime: 0,
+                duration: 0,
+                sourcePanel: null,
+                impactPoint: null,
+                originalPanelEmissive: null,
+                opacity: 0
+            });
+
+            this.objects.push(beamGroup);
+        }
+
+        // Create impact points on the sun
+        this.impactPoints = [];
+        for (let i = 0; i < maxBeams; i++) {
+            const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending
+            });
+            const impact = new THREE.Mesh(geometry, material);
+            impact.visible = false;
+            this.scene.add(impact);
+            this.impactPoints.push(impact);
+            this.objects.push(impact);
+        }
+    }
+
+    activateBeam(panelData) {
+        // Find an inactive beam
+        const beamIndex = this.beams.findIndex(b => !b.active);
+        if (beamIndex === -1) return;
+
+        const beam = this.beams[beamIndex];
+        const impactPoint = this.impactPoints[beamIndex];
+
+        // Calculate beam position and orientation
+        const panelPos = panelData.mesh.position;
+        const centerPos = new THREE.Vector3(0, 0, 0);
+
+        // Position beam between panel and center
+        beam.mesh.position.copy(panelPos).multiplyScalar(0.5);
+
+        // Orient beam to point from panel to center
+        beam.mesh.lookAt(centerPos);
+        beam.mesh.rotateX(Math.PI / 2); // Adjust for cylinder orientation
+
+        // Scale beam length to reach from panel to near center
+        const distance = panelPos.length();
+        beam.mesh.scale.set(1, distance * 0.9, 1);
+
+        // Store original panel emissive intensity
+        beam.originalPanelEmissive = panelData.mesh.material.emissiveIntensity;
+
+        // Position impact point on sun surface
+        const sunRadius = 4.2; // Slightly larger than sun
+        const direction = panelPos.clone().normalize();
+        impactPoint.position.copy(direction).multiplyScalar(sunRadius);
+        impactPoint.visible = true;
+        beam.impactPoint = impactPoint;
+
+        // Activate beam
+        beam.active = true;
+        beam.startTime = this.time;
+        beam.duration = 0.5 + Math.random() * 1.5; // 0.5 to 2 seconds
+        beam.sourcePanel = panelData;
+        beam.mesh.visible = true;
+        beam.opacity = 0;
+    }
+
+    update(freqData, colorSpeed) {
+        this.time += 0.01 * colorSpeed;
+
+        if (this.sun) {
+            const scale = 1 + freqData.bass * 0.4;
+            this.sun.scale.set(scale, scale, scale);
+            this.sun.material.emissiveIntensity = 1 + freqData.bass * 0.5;
+        }
+
+        // Randomly activate beams based on audio intensity
+        // Increased probability for testing - was 0.05, now 0.15
+        if (Math.random() < Math.max(0.02, freqData.bass * 0.15) && this.panels.length > 0) {
+            const randomPanel = this.panels[Math.floor(Math.random() * this.panels.length)];
+            this.activateBeam(randomPanel);
+        }
+
+        this.panels.forEach((panelData, i) => {
+            // All panels orbit horizontally (around Y axis) in the same direction
+            panelData.theta += panelData.speed * colorSpeed;
+
+            // Calculate new position maintaining sphere formation
+            // Different expansion for each layer based on frequency ranges
+            let radiusExpansion = 0;
+            if (panelData.layerIndex === 0) {
+                // Inner layer responds to bass
+                radiusExpansion = freqData.bass * 1.5;
+            } else if (panelData.layerIndex === 1) {
+                // Middle layer responds to mid frequencies
+                radiusExpansion = freqData.mid * 2;
+            } else {
+                // Outer layer responds to treble
+                radiusExpansion = freqData.treble * 2.5;
             }
 
-            createLights() {
-                const ambientLight = new THREE.AmbientLight(0x402000);
-                this.scene.add(ambientLight);
-                this.lights.push(ambientLight);
+            const radius = panelData.baseRadius + radiusExpansion;
 
-                const sunLight = new THREE.PointLight(0xff8800, 2, 100);
-                this.scene.add(sunLight);
-                this.lights.push(sunLight);
+            // Standard spherical to Cartesian conversion
+            // phi (latitude) stays constant, theta (longitude) changes for horizontal orbit
+            const x = radius * Math.sin(panelData.phi) * Math.cos(panelData.theta);
+            const y = radius * Math.cos(panelData.phi); // Y based on latitude (stays constant)
+            const z = radius * Math.sin(panelData.phi) * Math.sin(panelData.theta);
+
+            panelData.mesh.position.set(x, y, z);
+
+            // Maintain orientation towards center (panels always face inward)
+            panelData.mesh.lookAt(0, 0, 0);
+
+            // Audio-reactive panel scaling and glow
+            if (i < freqData.array.length) {
+                const intensity = freqData.array[i] / 255;
+
+                // Scale panels uniformly to maintain square shape
+                const scale = 1 + intensity * 0.25;
+                panelData.mesh.scale.set(scale, scale, scale * 0.1); // Keep depth thin
+
+                // Adjust emissive intensity based on frequency
+                panelData.mesh.material.emissiveIntensity = 0.3 + intensity * 0.6;
+
+                // Color variation based on layer and frequency
+                const baseHue = 30 + (panelData.layerIndex * 10); // Base color per layer
+                const hue = baseHue + intensity * 20; // Frequency modulation
+                panelData.mesh.material.emissive.setHSL(hue / 360, 1, 0.5);
             }
+        });
 
-            update(freqData, colorSpeed) {
-                this.time += 0.01 * colorSpeed;
+        if (this.shell) {
+            const scale = 1 + freqData.mid * 0.1;
+            this.shell.scale.set(scale, scale, scale);
+            this.shell.rotation.y += 0.0005 * colorSpeed;
+            this.shell.material.opacity = 0.2 + freqData.treble * 0.2;
+        }
 
-                if (this.sun) {
-                    const scale = 1 + freqData.bass * 0.4;
-                    this.sun.scale.set(scale, scale, scale);
-                    this.sun.material.emissiveIntensity = 1 + freqData.bass * 0.5;
+        // Update beam animations
+        this.beams.forEach(beam => {
+            if (!beam.active) return;
+
+            const elapsed = this.time - beam.startTime;
+            const progress = elapsed / beam.duration;
+
+            if (progress >= 1) {
+                // Deactivate beam and restore panel
+                beam.active = false;
+                beam.mesh.visible = false;
+                beam.opacity = 0;
+
+                // Reset beam materials
+                beam.mainBeam.material.opacity = 0;
+                beam.glowBeam.material.opacity = 0;
+
+                // Restore panel emissive
+                if (beam.sourcePanel && beam.originalPanelEmissive !== null) {
+                    beam.sourcePanel.mesh.material.emissiveIntensity = beam.originalPanelEmissive;
                 }
 
-                this.panels.forEach((panelData, i) => {
-                    panelData.theta += panelData.speed * colorSpeed;
+                // Hide impact point
+                if (beam.impactPoint) {
+                    beam.impactPoint.visible = false;
+                    beam.impactPoint.material.opacity = 0;
+                }
+            } else {
+                // Animate beam opacity (fade in quickly, then fade out)
+                if (progress < 0.2) {
+                    beam.opacity = progress * 5; // Fade in
+                } else {
+                    beam.opacity = 1 - ((progress - 0.2) / 0.8); // Fade out
+                }
 
-                    const radius = 12;
-                    panelData.mesh.position.x = radius * Math.sin(panelData.phi) * Math.cos(panelData.theta);
-                    panelData.mesh.position.y = radius * Math.sin(panelData.phi) * Math.sin(panelData.theta);
-                    panelData.mesh.position.z = radius * Math.cos(panelData.phi);
+                // Update beam materials
+                beam.mainBeam.material.opacity = beam.opacity * 0.9;
+                beam.glowBeam.material.opacity = beam.opacity * 0.3;
 
-                    panelData.mesh.lookAt(0, 0, 0);
+                // Make source panel glow brighter
+                if (beam.sourcePanel) {
+                    const panelPos = beam.sourcePanel.mesh.position;
 
-                    if (i < freqData.array.length) {
-                        const intensity = freqData.array[i] / 255;
-                        const scale = 1 + intensity * 0.5;
-                        panelData.mesh.scale.set(scale, scale, 1);
-                        panelData.mesh.material.emissiveIntensity = 0.3 + intensity * 0.5;
-                    }
-                });
+                    // Brighten panel when firing
+                    beam.sourcePanel.mesh.material.emissiveIntensity =
+                        beam.originalPanelEmissive + (beam.opacity * 1.5);
 
-                if (this.shell) {
-                    const scale = 1 + freqData.mid * 0.1;
-                    this.shell.scale.set(scale, scale, scale);
-                    this.shell.rotation.y += 0.0005 * colorSpeed;
-                    this.shell.material.opacity = 0.2 + freqData.treble * 0.2;
+                    // Make panel more white when firing
+                    const hue = 30 + (beam.opacity * 30); // Shift toward yellow-white
+                    beam.sourcePanel.mesh.material.emissive.setHSL(hue / 360, 1 - beam.opacity * 0.5, 0.5 + beam.opacity * 0.3);
+
+                    // Update beam position if panel moved
+                    beam.mesh.position.copy(panelPos).multiplyScalar(0.5);
+
+                    // Re-orient beam
+                    const centerPos = new THREE.Vector3(0, 0, 0);
+                    beam.mesh.lookAt(centerPos);
+                    beam.mesh.rotateX(Math.PI / 2);
+
+                    // Update beam length
+                    const distance = panelPos.length();
+                    beam.mesh.scale.set(1, distance * 0.9, 1);
+                }
+
+                // Animate impact point
+                if (beam.impactPoint) {
+                    beam.impactPoint.material.opacity = beam.opacity * 0.8;
+
+                    // Pulse the impact point size
+                    const pulseScale = 1 + Math.sin(elapsed * 20) * 0.3 * beam.opacity;
+                    beam.impactPoint.scale.set(pulseScale, pulseScale, pulseScale);
+
+                    // Color shift for impact
+                    beam.impactPoint.material.color.setHSL(
+                        45 / 360, // Yellow-white
+                        1,
+                        0.8 + beam.opacity * 0.2
+                    );
                 }
             }
+        });
+    }
 
-            dispose() {
-                this.objects.forEach(obj => {
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) obj.material.dispose();
-                    this.scene.remove(obj);
-                });
+    dispose() {
+        // Clean up panel group
+        if (this.panelGroup) {
+            this.scene.remove(this.panelGroup);
+        }
 
-                this.lights.forEach(light => {
-                    this.scene.remove(light);
-                });
+        // Clean up impact points
+        if (this.impactPoints) {
+            this.impactPoints.forEach(impact => {
+                if (impact.geometry) impact.geometry.dispose();
+                if (impact.material) impact.material.dispose();
+                this.scene.remove(impact);
+            });
+        }
+
+        // Clean up all objects
+        this.objects.forEach(obj => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+            if (obj.parent) obj.parent.remove(obj);
+        });
+
+        // Clean up lights
+        this.lights.forEach(light => {
+            this.scene.remove(light);
+        });
+
+        // Clear arrays
+        this.panels = [];
+        this.objects = [];
+        this.lights = [];
+        this.beams = [];
+        this.impactPoints = [];
+    }
+}
+
+DysonSphereTheme;
+
+
+        // GameOfLife
+        window.GameOfLife = class GameOfLife {
+    constructor(scene) {
+        this.scene = scene;
+        this.gridSize = 100;
+        this.cellSize = 0.8;
+        this.grid = [];
+        this.nextGrid = [];
+        this.lastUpdate = 0;
+        this.updateInterval = 200;
+        this.visible = true;
+
+        this.updateCount = 0;
+        this.cellChanges = 0;
+        this.diagnosticInterval = 5000;
+        this.lastDiagnostic = 0;
+
+        this.initGrid();
+        this.createMesh();
+
+        console.log('[GameOfLife] Initialized: grid=' + this.gridSize + 'x' + this.gridSize + ', cells=' + (this.gridSize * this.gridSize));
+    }
+
+    initGrid() {
+        for (let i = 0; i < this.gridSize; i++) {
+            this.grid[i] = [];
+            this.nextGrid[i] = [];
+            for (let j = 0; j < this.gridSize; j++) {
+                this.grid[i][j] = Math.random() < 0.3 ? 1 : 0;
+                this.nextGrid[i][j] = 0;
+            }
+        }
+    }
+
+    createMesh() {
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        this.sphereRadius = 35;
+
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const phi = (i / this.gridSize) * Math.PI;
+                const theta = (j / this.gridSize) * Math.PI * 2;
+
+                const x = this.sphereRadius * Math.sin(phi) * Math.cos(theta);
+                const y = this.sphereRadius * Math.sin(phi) * Math.sin(theta);
+                const z = this.sphereRadius * Math.cos(phi);
+
+                positions.push(x, y, z);
+                colors.push(0, 1, 1);
             }
         }
 
-        class GameOfLife {
-            constructor(scene) {
-                this.scene = scene;
-                this.gridSize = 100;
-                this.cellSize = 0.8;
-                this.grid = [];
-                this.nextGrid = [];
-                this.lastUpdate = 0;
-                this.updateInterval = 200;
-                this.visible = true;
-                
-                this.updateCount = 0;
-                this.cellChanges = 0;
-                this.diagnosticInterval = 5000;
-                this.lastDiagnostic = 0;
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-                this.initGrid();
-                this.createMesh();
-                
-                console.log('[GameOfLife] Initialized: grid=' + this.gridSize + 'x' + this.gridSize + ', cells=' + (this.gridSize * this.gridSize));
+        const material = new THREE.PointsMaterial({
+            size: this.cellSize * 2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.mesh = new THREE.Points(geometry, material);
+        this.scene.add(this.mesh);
+
+        this.basePositions = positions.slice();
+    }
+
+    countNeighbors(x, y) {
+        let count = 0;
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i === 0 && j === 0) continue;
+                const nx = (x + i + this.gridSize) % this.gridSize;
+                const ny = (y + j + this.gridSize) % this.gridSize;
+                count += this.grid[nx][ny];
             }
+        }
+        return count;
+    }
 
-            initGrid() {
-                for (let i = 0; i < this.gridSize; i++) {
-                    this.grid[i] = [];
-                    this.nextGrid[i] = [];
-                    for (let j = 0; j < this.gridSize; j++) {
-                        this.grid[i][j] = Math.random() < 0.3 ? 1 : 0;
-                        this.nextGrid[i][j] = 0;
-                    }
-                }
-            }
+    updateGrid(audioIntensity) {
+        let changes = 0;
 
-            createMesh() {
-                const geometry = new THREE.BufferGeometry();
-                const positions = [];
-                const colors = [];
-                this.sphereRadius = 35;
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const neighbors = this.countNeighbors(i, j);
+                const oldState = this.grid[i][j];
 
-                for (let i = 0; i < this.gridSize; i++) {
-                    for (let j = 0; j < this.gridSize; j++) {
-                        const phi = (i / this.gridSize) * Math.PI;
-                        const theta = (j / this.gridSize) * Math.PI * 2;
-
-                        const x = this.sphereRadius * Math.sin(phi) * Math.cos(theta);
-                        const y = this.sphereRadius * Math.sin(phi) * Math.sin(theta);
-                        const z = this.sphereRadius * Math.cos(phi);
-
-                        positions.push(x, y, z);
-                        colors.push(0, 1, 1);
-                    }
+                if (this.grid[i][j] === 1) {
+                    this.nextGrid[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                } else {
+                    this.nextGrid[i][j] = (neighbors === 3) ? 1 : 0;
                 }
 
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-                const material = new THREE.PointsMaterial({
-                    size: this.cellSize * 2,
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.8,
-                    blending: THREE.AdditiveBlending
-                });
-
-                this.mesh = new THREE.Points(geometry, material);
-                this.scene.add(this.mesh);
-
-                this.basePositions = positions.slice();
-            }
-
-            countNeighbors(x, y) {
-                let count = 0;
-                for (let i = -1; i <= 1; i++) {
-                    for (let j = -1; j <= 1; j++) {
-                        if (i === 0 && j === 0) continue;
-                        const nx = (x + i + this.gridSize) % this.gridSize;
-                        const ny = (y + j + this.gridSize) % this.gridSize;
-                        count += this.grid[nx][ny];
-                    }
-                }
-                return count;
-            }
-
-            updateGrid(audioIntensity) {
-                let changes = 0;
-                
-                for (let i = 0; i < this.gridSize; i++) {
-                    for (let j = 0; j < this.gridSize; j++) {
-                        const neighbors = this.countNeighbors(i, j);
-                        const oldState = this.grid[i][j];
-
-                        if (this.grid[i][j] === 1) {
-                            this.nextGrid[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
-                        } else {
-                            this.nextGrid[i][j] = (neighbors === 3) ? 1 : 0;
-                        }
-
-                        if (audioIntensity > 1 && Math.random() < audioIntensity * 0.01) {
-                            this.nextGrid[i][j] = 1;
-                        }
-                        
-                        if (oldState !== this.nextGrid[i][j]) {
-                            changes++;
-                        }
-                    }
+                if (audioIntensity > 1 && Math.random() < audioIntensity * 0.01) {
+                    this.nextGrid[i][j] = 1;
                 }
 
-                [this.grid, this.nextGrid] = [this.nextGrid, this.grid];
-                this.cellChanges = changes;
-                this.updateCount++;
-            }
-
-            updateMesh() {
-                const colors = this.mesh.geometry.attributes.color.array;
-                const positions = this.mesh.geometry.attributes.position.array;
-
-                for (let i = 0; i < this.gridSize; i++) {
-                    for (let j = 0; j < this.gridSize; j++) {
-                        const idx = (i * this.gridSize + j) * 3;
-
-                        if (this.grid[i][j] === 1) {
-                            colors[idx] = 0;
-                            colors[idx + 1] = 1;
-                            colors[idx + 2] = 1;
-
-                            const scale = 1 + Math.random() * 0.05;
-                            positions[idx] = this.basePositions[idx] * scale;
-                            positions[idx + 1] = this.basePositions[idx + 1] * scale;
-                            positions[idx + 2] = this.basePositions[idx + 2] * scale;
-                        } else {
-                            colors[idx] = 0;
-                            colors[idx + 1] = 0.1;
-                            colors[idx + 2] = 0.1;
-
-                            positions[idx] = this.basePositions[idx];
-                            positions[idx + 1] = this.basePositions[idx + 1];
-                            positions[idx + 2] = this.basePositions[idx + 2];
-                        }
-                    }
+                if (oldState !== this.nextGrid[i][j]) {
+                    changes++;
                 }
-
-                this.mesh.geometry.attributes.color.needsUpdate = true;
-                this.mesh.geometry.attributes.position.needsUpdate = true;
-            }
-
-            update(audioIntensity) {
-                if (!this.visible) return;
-
-                const now = performance.now();
-                if (now - this.lastUpdate > this.updateInterval) {
-                    this.updateGrid(audioIntensity);
-                    this.updateMesh();
-                    this.lastUpdate = now;
-                    
-                    if (now - this.lastDiagnostic > this.diagnosticInterval) {
-                        this.runDiagnostics();
-                        this.lastDiagnostic = now;
-                    }
-                }
-            }
-            
-            runDiagnostics() {
-                let aliveCells = 0;
-                for (let i = 0; i < this.gridSize; i++) {
-                    for (let j = 0; j < this.gridSize; j++) {
-                        if (this.grid[i][j] === 1) aliveCells++;
-                    }
-                }
-                
-                const totalCells = this.gridSize * this.gridSize;
-                const alivePercent = ((aliveCells / totalCells) * 100).toFixed(1);
-                const fps = (1000 / this.updateInterval).toFixed(1);
-                
-                console.log('[GameOfLife] Status:');
-                console.log('  ├─ Updates: ' + this.updateCount);
-                console.log('  ├─ Alive cells: ' + aliveCells + '/' + totalCells + ' (' + alivePercent + '%)');
-                console.log('  ├─ Last changes: ' + this.cellChanges + ' cells');
-                console.log('  ├─ Update rate: ' + fps + ' Hz (' + this.updateInterval + 'ms)');
-                console.log('  ├─ Visible: ' + this.visible);
-                console.log('  └─ Mesh in scene: ' + (this.mesh.parent !== null));
-                
-                if (aliveCells === 0) {
-                    console.warn('[GameOfLife] WARNING: No alive cells detected! Re-seeding...');
-                    this.initGrid();
-                } else if (this.cellChanges === 0 && this.updateCount > 5) {
-                    console.warn('[GameOfLife] WARNING: No cell changes detected (static pattern)');
-                }
-            }
-
-            setVisible(visible) {
-                this.visible = visible;
-                this.mesh.visible = visible;
-                console.log('[GameOfLife] Visibility changed: ' + visible);
-            }
-            
-            getStatus() {
-                let aliveCells = 0;
-                for (let i = 0; i < this.gridSize; i++) {
-                    for (let j = 0; j < this.gridSize; j++) {
-                        if (this.grid[i][j] === 1) aliveCells++;
-                    }
-                }
-                
-                return {
-                    updates: this.updateCount,
-                    aliveCells: aliveCells,
-                    totalCells: this.gridSize * this.gridSize,
-                    lastChanges: this.cellChanges,
-                    visible: this.visible,
-                    updateInterval: this.updateInterval,
-                    inScene: this.mesh.parent !== null
-                };
             }
         }
 
-        class NeonBanner {
-            constructor() {
-                this.canvas = document.getElementById('banner-canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.defaultText = "HACKERHAUS POST-CONVENTION STORIES: The energy was electric as developers gathered to share tales of brilliant hacks and innovative solutions... ";
-                this.text = this.defaultText;
-                this.scrollX = 0;
-                this.time = 0;
-                this.visible = true;
+        [this.grid, this.nextGrid] = [this.nextGrid, this.grid];
+        this.cellChanges = changes;
+        this.updateCount++;
+    }
 
-                this.font = {
-                    A: [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-                    B: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],
-                    C: [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
-                    D: [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
-                    E: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],
-                    F: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
-                    G: [[0,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[0,1,1,0]],
-                    H: [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-                    I: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
-                    J: [[0,0,1,1],[0,0,0,1],[0,0,0,1],[1,0,0,1],[0,1,1,0]],
-                    K: [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
-                    L: [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
-                    M: [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
-                    N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
-                    O: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
-                    P: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
-                    Q: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,1,0],[0,1,0,1]],
-                    R: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
-                    S: [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
-                    T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
-                    U: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
-                    V: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0],[0,1,0,0]],
-                    W: [[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,1,0,1,1],[1,0,0,0,1]],
-                    X: [[1,0,0,1],[0,1,1,0],[0,1,0,0],[0,1,1,0],[1,0,0,1]],
-                    Y: [[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,1,0]],
-                    Z: [[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
-                    ' ': [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
-                    ':': [[0],[1],[0],[1],[0]],
-                    '.': [[0],[0],[0],[0],[1]],
-                    '-': [[0,0,0],[0,0,0],[1,1,1],[0,0,0],[0,0,0]]
-                };
+    updateMesh() {
+        const colors = this.mesh.geometry.attributes.color.array;
+        const positions = this.mesh.geometry.attributes.position.array;
 
-                this.onResize();
-            }
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const idx = (i * this.gridSize + j) * 3;
 
-            onResize() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = 60;
-            }
+                if (this.grid[i][j] === 1) {
+                    colors[idx] = 0;
+                    colors[idx + 1] = 1;
+                    colors[idx + 2] = 1;
 
-            drawChar(char, x, y, pixelSize, color, glow) {
-                const pattern = this.font[char.toUpperCase()] || this.font[' '];
+                    const scale = 1 + Math.random() * 0.05;
+                    positions[idx] = this.basePositions[idx] * scale;
+                    positions[idx + 1] = this.basePositions[idx + 1] * scale;
+                    positions[idx + 2] = this.basePositions[idx + 2] * scale;
+                } else {
+                    colors[idx] = 0;
+                    colors[idx + 1] = 0.1;
+                    colors[idx + 2] = 0.1;
 
-                for (let row = 0; row < pattern.length; row++) {
-                    for (let col = 0; col < pattern[row].length; col++) {
-                        if (pattern[row][col]) {
-                            const px = x + col * pixelSize;
-                            const py = y + row * pixelSize;
-
-                            if (glow > 0) {
-                                this.ctx.shadowBlur = 10 + glow * 10;
-                                this.ctx.shadowColor = color;
-                            }
-
-                            this.ctx.fillStyle = color;
-                            this.ctx.fillRect(px, py, pixelSize - 1, pixelSize - 1);
-                        }
-                    }
+                    positions[idx] = this.basePositions[idx];
+                    positions[idx + 1] = this.basePositions[idx + 1];
+                    positions[idx + 2] = this.basePositions[idx + 2];
                 }
-
-                this.ctx.shadowBlur = 0;
-            }
-
-            update(audioIntensity, colorSpeed) {
-                if (!this.visible) {
-                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                    return;
-                }
-
-                this.time += 0.01 * colorSpeed;
-                this.scrollX -= 2;
-
-                const pixelSize = 6;
-                const charSpacing = 5;
-
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-                const hue = (this.time * 0.1) % 1;
-                const color = `hsl(${hue * 360}, 100%, ${50 + audioIntensity * 20}%)`;
-                const glow = audioIntensity;
-
-                let x = this.scrollX;
-                const y = 10;
-
-                for (let i = 0; i < this.text.length; i++) {
-                    const char = this.text[i];
-                    const pattern = this.font[char.toUpperCase()] || this.font[' '];
-                    const charWidth = pattern[0].length * pixelSize;
-
-                    if (x + charWidth > 0 && x < this.canvas.width) {
-                        this.drawChar(char, x, y, pixelSize, color, glow);
-                    }
-
-                    x += charWidth + charSpacing;
-                }
-
-                if (this.scrollX + this.text.length * (pixelSize * 5 + charSpacing) < 0) {
-                    this.scrollX = this.canvas.width;
-                }
-            }
-
-            setVisible(visible) {
-                this.visible = visible;
-                if (!visible) {
-                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                }
-            }
-            
-            setText(newText) {
-                this.text = newText.toUpperCase() + " ";
-                this.scrollX = this.canvas.width;
-            }
-            
-            resetText() {
-                this.text = this.defaultText;
-                this.scrollX = this.canvas.width;
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof THREE === 'undefined') {
-                console.error('Three.js failed to load');
-                document.getElementById('loading').textContent = 'Error: Three.js failed to load';
+        this.mesh.geometry.attributes.color.needsUpdate = true;
+        this.mesh.geometry.attributes.position.needsUpdate = true;
+    }
+
+    update(audioIntensity) {
+        if (!this.visible) return;
+
+        const now = performance.now();
+        if (now - this.lastUpdate > this.updateInterval) {
+            this.updateGrid(audioIntensity);
+            this.updateMesh();
+            this.lastUpdate = now;
+
+            if (now - this.lastDiagnostic > this.diagnosticInterval) {
+                this.runDiagnostics();
+                this.lastDiagnostic = now;
+            }
+        }
+    }
+
+    runDiagnostics() {
+        let aliveCells = 0;
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                if (this.grid[i][j] === 1) aliveCells++;
+            }
+        }
+
+        const totalCells = this.gridSize * this.gridSize;
+        const alivePercent = ((aliveCells / totalCells) * 100).toFixed(1);
+        const fps = (1000 / this.updateInterval).toFixed(1);
+
+        console.log('[GameOfLife] Status:');
+        console.log('  ├─ Updates: ' + this.updateCount);
+        console.log('  ├─ Alive cells: ' + aliveCells + '/' + totalCells + ' (' + alivePercent + '%)');
+        console.log('  ├─ Last changes: ' + this.cellChanges + ' cells');
+        console.log('  ├─ Update rate: ' + fps + ' Hz (' + this.updateInterval + 'ms)');
+        console.log('  ├─ Visible: ' + this.visible);
+        console.log('  └─ Mesh in scene: ' + (this.mesh.parent !== null));
+
+        if (aliveCells === 0) {
+            console.warn('[GameOfLife] WARNING: No alive cells detected! Re-seeding...');
+            this.initGrid();
+        } else if (this.cellChanges === 0 && this.updateCount > 5) {
+            console.warn('[GameOfLife] WARNING: No cell changes detected (static pattern)');
+        }
+    }
+
+    setVisible(visible) {
+        this.visible = visible;
+        this.mesh.visible = visible;
+        console.log('[GameOfLife] Visibility changed: ' + visible);
+    }
+
+    getStatus() {
+        let aliveCells = 0;
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                if (this.grid[i][j] === 1) aliveCells++;
+            }
+        }
+
+        return {
+            updates: this.updateCount,
+            aliveCells: aliveCells,
+            totalCells: this.gridSize * this.gridSize,
+            lastChanges: this.cellChanges,
+            visible: this.visible,
+            updateInterval: this.updateInterval,
+            inScene: this.mesh.parent !== null
+        };
+    }
+}
+
+GameOfLife;
+
+
+        // NeonBanner
+        window.NeonBanner = class NeonBanner {
+    constructor() {
+        this.canvas = document.getElementById('banner-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.defaultText = "HACKERHAUS POST-CONVENTION STORIES: The energy was electric as developers gathered to share tales of brilliant hacks and innovative solutions... ";
+        this.text = this.defaultText;
+        this.scrollX = 0;
+        this.time = 0;
+        this.visible = true;
+
+        this.font = {
+            A: [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+            B: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],
+            C: [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
+            D: [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
+            E: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],
+            F: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+            G: [[0,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[0,1,1,0]],
+            H: [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+            I: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+            J: [[0,0,1,1],[0,0,0,1],[0,0,0,1],[1,0,0,1],[0,1,1,0]],
+            K: [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
+            L: [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
+            M: [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+            N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
+            O: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+            P: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+            Q: [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,1,0],[0,1,0,1]],
+            R: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
+            S: [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
+            T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
+            U: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+            V: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0],[0,1,0,0]],
+            W: [[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,1,0,1,1],[1,0,0,0,1]],
+            X: [[1,0,0,1],[0,1,1,0],[0,1,0,0],[0,1,1,0],[1,0,0,1]],
+            Y: [[1,0,1],[1,0,1],[0,1,0],[0,1,0],[0,1,0]],
+            Z: [[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
+            ' ': [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+            ':': [[0],[1],[0],[1],[0]],
+            '.': [[0],[0],[0],[0],[1]],
+            '-': [[0,0,0],[0,0,0],[1,1,1],[0,0,0],[0,0,0]]
+        };
+
+        this.onResize();
+    }
+
+    onResize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = 60;
+    }
+
+    drawChar(char, x, y, pixelSize, color, glow) {
+        const pattern = this.font[char.toUpperCase()] || this.font[' '];
+
+        for (let row = 0; row < pattern.length; row++) {
+            for (let col = 0; col < pattern[row].length; col++) {
+                if (pattern[row][col]) {
+                    const px = x + col * pixelSize;
+                    const py = y + row * pixelSize;
+
+                    if (glow > 0) {
+                        this.ctx.shadowBlur = 10 + glow * 10;
+                        this.ctx.shadowColor = color;
+                    }
+
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillRect(px, py, pixelSize - 1, pixelSize - 1);
+                }
+            }
+        }
+
+        this.ctx.shadowBlur = 0;
+    }
+
+    update(audioIntensity, colorSpeed) {
+        if (!this.visible) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            return;
+        }
+
+        this.time += 0.01 * colorSpeed;
+        this.scrollX -= 2;
+
+        const pixelSize = 6;
+        const charSpacing = 5;
+
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        const hue = (this.time * 0.1) % 1;
+        const color = `hsl(${hue * 360}, 100%, ${50 + audioIntensity * 20}%)`;
+        const glow = audioIntensity;
+
+        let x = this.scrollX;
+        const y = 10;
+
+        for (let i = 0; i < this.text.length; i++) {
+            const char = this.text[i];
+            const pattern = this.font[char.toUpperCase()] || this.font[' '];
+            const charWidth = pattern[0].length * pixelSize;
+
+            if (x + charWidth > 0 && x < this.canvas.width) {
+                this.drawChar(char, x, y, pixelSize, color, glow);
+            }
+
+            x += charWidth + charSpacing;
+        }
+
+        if (this.scrollX + this.text.length * (pixelSize * 5 + charSpacing) < 0) {
+            this.scrollX = this.canvas.width;
+        }
+    }
+
+    setVisible(visible) {
+        this.visible = visible;
+        if (!visible) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
+    setText(newText) {
+        this.text = newText.toUpperCase() + " ";
+        this.scrollX = this.canvas.width;
+    }
+
+    resetText() {
+        this.text = this.defaultText;
+        this.scrollX = this.canvas.width;
+    }
+}
+
+NeonBanner;
+
+
+        // AudioVisualizer
+        window.AudioVisualizer = class AudioVisualizer {
+    constructor() {
+        this.audioContext = null;
+        this.analyser = null;
+        this.dataArray = null;
+        this.bufferLength = null;
+        this.audioSource = null;
+        this.currentStream = null;
+        this.currentMediaElement = null;
+        this.selectedOutputDeviceId = null;
+        this.currentObjectURL = null;
+
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.currentTheme = null;
+
+        this.sensitivity = 5;
+        this.colorSpeed = 5;
+        this.golEnabled = true;
+        this.textEnabled = true;
+        this.uiVisible = false;
+        this.activeDnBButton = false;
+
+        this.cinemaMode = false;  // Start with cinema mode OFF
+        this.lastUserInteraction = 0;
+        this.cinemaInactivityTimeout = 10000;
+        this.rotationSpeed = 1; // 1 = normal, 0.5 = slow, 2 = fast
+
+        this.fpsTime = 0;
+        this.fpsFrames = 0;
+        this.currentFPS = 60;
+
+        this.init();
+    }
+
+    init() {
+        this.setupThreeJS();
+        this.setupBanner();
+        this.setupUI();
+        this.setupKeyboard();
+        this.setupGameOfLife();
+
+        this.currentTheme = new SpaceTheme(this.scene, this.camera);
+
+        document.getElementById('loading').style.display = 'none';
+
+        this.animate();
+    }
+
+    setupThreeJS() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x000000);
+
+        this.camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        this.camera.position.z = 30;
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+        this.createStarfield();
+        this.setupCameraControls();
+        this.setupCinemaMode();
+
+        window.addEventListener('resize', () => this.onResize());
+    }
+
+    createStarfield() {
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 5000;
+        const positions = new Float32Array(starCount * 3);
+        const colors = new Float32Array(starCount * 3);
+        const sizes = new Float32Array(starCount);
+
+        for (let i = 0; i < starCount; i++) {
+            const i3 = i * 3;
+
+            const radius = 200 + Math.random() * 300;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+
+            positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            positions[i3 + 2] = radius * Math.cos(phi);
+
+            const brightness = 0.5 + Math.random() * 0.5;
+            colors[i3] = brightness;
+            colors[i3 + 1] = brightness;
+            colors[i3 + 2] = brightness;
+
+            sizes[i] = Math.random() * 2 + 0.5;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        const starMaterial = new THREE.PointsMaterial({
+            size: 1.5,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            sizeAttenuation: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.starfield = new THREE.Points(starGeometry, starMaterial);
+        this.scene.add(this.starfield);
+
+        console.log('[Starfield] Created ' + starCount + ' stars');
+    }
+
+    setupCameraControls() {
+        this.isDragging = false;
+        this.previousTouch = null;
+        this.cameraRotation = { x: 0, y: 0 };
+        this.cameraDistance = 30;
+        this.touchStartDistance = null;
+
+        this.lastTapTime = 0;
+        this.doubleTapThreshold = 300;
+        this.autoRotateActive = false;
+        this.autoRotateDirection = 1;
+
+        const canvas = this.renderer.domElement;
+
+        // Add double-click for auto-rotation
+        canvas.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            this.toggleAutoRotation();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.previousTouch = { x: e.clientX, y: e.clientY };
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+
+            const deltaX = e.clientX - this.previousTouch.x;
+            const deltaY = e.clientY - this.previousTouch.y;
+
+            this.cameraRotation.y += deltaX * 0.005;
+            this.cameraRotation.x += deltaY * 0.005;
+
+            this.cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraRotation.x));
+
+            this.updateCameraPosition();
+
+            this.previousTouch = { x: e.clientX, y: e.clientY };
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            this.isDragging = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            this.isDragging = false;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.cameraDistance += e.deltaY * 0.05;
+            this.cameraDistance = Math.max(10, Math.min(100, this.cameraDistance));
+            this.updateCameraPosition();
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                const currentTime = Date.now();
+                const timeSinceLastTap = currentTime - this.lastTapTime;
+
+                if (timeSinceLastTap < this.doubleTapThreshold && timeSinceLastTap > 0) {
+                    this.handleDoubleTap();
+                    this.lastTapTime = 0;
+                } else {
+                    this.lastTapTime = currentTime;
+                    this.isDragging = true;
+                    this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            } else if (e.touches.length === 2) {
+                this.isDragging = false;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                this.touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+
+            if (e.touches.length === 1 && this.isDragging) {
+                const deltaX = e.touches[0].clientX - this.previousTouch.x;
+                const deltaY = e.touches[0].clientY - this.previousTouch.y;
+
+                this.cameraRotation.y += deltaX * 0.005;
+                this.cameraRotation.x += deltaY * 0.005;
+
+                this.cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraRotation.x));
+
+                this.updateCameraPosition();
+
+                this.previousTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2 && this.touchStartDistance) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                const delta = this.touchStartDistance - distance;
+                this.cameraDistance += delta * 0.1;
+                this.cameraDistance = Math.max(10, Math.min(100, this.cameraDistance));
+
+                this.updateCameraPosition();
+
+                this.touchStartDistance = distance;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => {
+            this.isDragging = false;
+            this.touchStartDistance = null;
+        });
+    }
+
+    updateCameraPosition() {
+        const x = this.cameraDistance * Math.sin(this.cameraRotation.y) * Math.cos(this.cameraRotation.x);
+        const y = this.cameraDistance * Math.sin(this.cameraRotation.x);
+        const z = this.cameraDistance * Math.cos(this.cameraRotation.y) * Math.cos(this.cameraRotation.x);
+
+        this.camera.position.set(x, y, z);
+        this.camera.lookAt(0, 0, 0);
+    }
+
+    handleDoubleTap() {
+        if (this.autoRotateActive) {
+            this.autoRotateActive = false;
+            console.log('[DoubleTap] Auto-rotation stopped');
+        } else {
+            this.autoRotateActive = true;
+            this.autoRotateDirection *= -1;
+            console.log('[DoubleTap] Auto-rotation started - direction: ' + (this.autoRotateDirection > 0 ? 'clockwise' : 'counter-clockwise'));
+        }
+    }
+
+    updateAutoRotate() {
+        if (this.autoRotateActive || this.cinemaMode) {
+            // Base rotation speed: 0.005 radians per frame
+            const baseSpeed = 0.005;
+            this.cameraRotation.y += baseSpeed * this.rotationSpeed * this.autoRotateDirection;
+            this.updateCameraPosition();
+        }
+    }
+
+    setupCinemaMode() {
+        // Don't auto-disable cinema mode on interaction
+        // It should only toggle with the C key
+        console.log('[CinemaMode] Setup complete - use C key to toggle');
+    }
+
+    updateCinemaMode() {
+        // Cinema mode is now controlled only by the C key
+        // No automatic enabling/disabling
+    }
+
+    setupBanner() {
+        this.banner = new NeonBanner();
+    }
+
+    setupGameOfLife() {
+        this.gol = new GameOfLife(this.scene);
+    }
+
+    setupUI() {
+        document.getElementById('mic-btn').addEventListener('click', () => {
+            this.toggleMicDropdown();
+        });
+
+        document.getElementById('output-btn').addEventListener('click', () => {
+            this.toggleOutputDropdown();
+        });
+
+        document.getElementById('refresh-devices-btn').addEventListener('click', () => {
+            this.loadMicDevices();
+            this.loadOutputDevices();
+            this.detectActiveOutputDevice();
+        });
+
+        this.loadMicDevices();
+        this.loadOutputDevices();
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            this.loadFile(e.target.files[0]);
+        });
+
+        document.getElementById('stream-btn').addEventListener('click', () => {
+            const url = document.getElementById('stream-input').value;
+            this.loadStream(url);
+        });
+
+        document.getElementById('dnb-stream-btn').addEventListener('click', () => {
+            this.loadDnBStream();
+        });
+
+        document.getElementById('stop-btn').addEventListener('click', () => {
+            this.stopAudio();
+        });
+
+        document.getElementById('sensitivity-slider').addEventListener('input', (e) => {
+            this.sensitivity = parseInt(e.target.value);
+            document.getElementById('sensitivity-value').textContent = this.sensitivity;
+        });
+
+        document.getElementById('color-speed-slider').addEventListener('input', (e) => {
+            this.colorSpeed = parseInt(e.target.value);
+            document.getElementById('color-speed-value').textContent = this.colorSpeed;
+        });
+
+        document.getElementById('gol-toggle').addEventListener('click', (e) => {
+            this.golEnabled = !this.golEnabled;
+            e.target.classList.toggle('active');
+            this.gol.setVisible(this.golEnabled);
+        });
+
+        document.getElementById('text-toggle').addEventListener('click', (e) => {
+            this.textEnabled = !this.textEnabled;
+            e.target.classList.toggle('active');
+            this.banner.setVisible(this.textEnabled);
+        });
+
+        document.getElementById('theme-btn').addEventListener('click', () => {
+            this.switchTheme();
+        });
+
+        document.getElementById('custom-text-btn').addEventListener('click', () => {
+            const input = document.getElementById('custom-text-input');
+            const customText = input.value;
+
+            if (customText.length > 500) {
+                this.showError('Text too long (max 500 characters)');
                 return;
             }
-            const visualizer = new AudioVisualizer();
+
+            const sanitized = customText.replace(/[^A-Za-z0-9\s.:\-]/g, '');
+
+            if (sanitized.trim()) {
+                this.banner.setText(sanitized);
+                input.value = sanitized;
+                console.log('[CustomText] Banner updated: ' + sanitized);
+            } else {
+                this.banner.resetText();
+                input.value = '';
+                console.log('[CustomText] Banner reset to default');
+            }
         });
+
+        document.getElementById('custom-text-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('custom-text-btn').click();
+            }
+        });
+
+        document.getElementById('mobile-toggle-btn').addEventListener('click', () => {
+            this.toggleUI();
+        });
+    }
+
+    setupKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                this.toggleUI();
+            } else if (e.code === 'KeyP') {
+                this.switchTheme();
+            } else if (e.code === 'KeyC') {
+                e.preventDefault();
+                this.toggleCinemaMode();
+            } else if (e.code === 'BracketLeft' || e.code === 'Minus') {
+                // [ or - key: Decrease rotation speed
+                e.preventDefault();
+                this.adjustRotationSpeed(-0.25);
+            } else if (e.code === 'BracketRight' || e.code === 'Equal') {
+                // ] or + key: Increase rotation speed
+                e.preventDefault();
+                this.adjustRotationSpeed(0.25);
+            }
+        });
+    }
+
+    adjustRotationSpeed(delta) {
+        this.rotationSpeed = Math.max(0.25, Math.min(3, this.rotationSpeed + delta));
+        const speedText = this.rotationSpeed === 1 ? 'Normal' :
+                         this.rotationSpeed < 1 ? 'Slow' : 'Fast';
+        this.showNotification(`Rotation Speed: ${speedText} (${this.rotationSpeed.toFixed(2)}x)`);
+    }
+
+    toggleAutoRotation() {
+        this.autoRotateActive = !this.autoRotateActive;
+        this.showNotification(`Auto-Rotation: ${this.autoRotateActive ? 'ON' : 'OFF'}`);
+    }
+
+    toggleCinemaMode() {
+        this.cinemaMode = !this.cinemaMode;
+        this.autoRotateActive = this.cinemaMode;
+
+        const status = this.cinemaMode ? 'ON' : 'OFF';
+        this.showNotification(`Cinema Mode: ${status}`);
+    }
+
+    showNotification(message) {
+        // Show temporary notification
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 15px 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            border-radius: 10px;
+            z-index: 1000;
+            pointer-events: none;
+            animation: fadeOut 2s forwards;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        `;
+
+        // Add fade animation if not already exists
+        if (!document.getElementById('notification-style')) {
+            const style = document.createElement('style');
+            style.id = 'notification-style';
+            style.textContent = `
+                @keyframes fadeOut {
+                    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 2000);
+    }
+
+    async loadMicDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioDevices = devices.filter(d => d.kind === 'audioinput');
+
+            const container = document.getElementById('mic-devices');
+            container.innerHTML = '';
+
+            audioDevices.forEach(device => {
+                const btn = document.createElement('button');
+                btn.textContent = device.label || `Microphone ${device.deviceId.substr(0, 8)}`;
+                btn.addEventListener('click', () => {
+                    this.startMicrophone(device.deviceId);
+                    this.toggleMicDropdown();
+                });
+                container.appendChild(btn);
+            });
+        } catch (error) {
+            this.showError('Failed to load microphone devices: ' + error.message);
+        }
+    }
+
+    toggleMicDropdown() {
+        document.getElementById('mic-dropdown').classList.toggle('active');
+    }
+
+    toggleOutputDropdown() {
+        document.getElementById('output-dropdown').classList.toggle('active');
+    }
+
+    async loadOutputDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+            const container = document.getElementById('output-devices');
+            container.innerHTML = '';
+
+            const defaultBtn = document.createElement('button');
+            defaultBtn.textContent = 'Default Output';
+            defaultBtn.addEventListener('click', () => {
+                this.selectOutputDevice(null, 'Default Output');
+                this.toggleOutputDropdown();
+            });
+            container.appendChild(defaultBtn);
+
+            audioOutputs.forEach(device => {
+                const btn = document.createElement('button');
+                btn.textContent = device.label || `Speaker ${device.deviceId.substr(0, 8)}`;
+                btn.addEventListener('click', () => {
+                    this.selectOutputDevice(device.deviceId, btn.textContent);
+                    this.toggleOutputDropdown();
+                });
+                container.appendChild(btn);
+            });
+
+            this.detectActiveOutputDevice();
+        } catch (error) {
+            this.showError('Failed to load output devices: ' + error.message);
+        }
+    }
+
+    async detectActiveOutputDevice() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+            if (this.currentMediaElement && typeof this.currentMediaElement.sinkId !== 'undefined') {
+                const activeSinkId = this.currentMediaElement.sinkId;
+
+                if (activeSinkId === '') {
+                    document.getElementById('audio-output').textContent = 'Default Output';
+                } else {
+                    const activeDevice = audioOutputs.find(d => d.deviceId === activeSinkId);
+                    if (activeDevice) {
+                        document.getElementById('audio-output').textContent = activeDevice.label || 'Unknown Device';
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to detect active output device:', error);
+        }
+    }
+
+    async selectOutputDevice(deviceId, deviceName) {
+        this.selectedOutputDeviceId = deviceId;
+        document.getElementById('audio-output').textContent = deviceName;
+
+        if (this.currentMediaElement && typeof this.currentMediaElement.setSinkId === 'function') {
+            try {
+                await this.currentMediaElement.setSinkId(deviceId || '');
+            } catch (error) {
+                this.showError('Failed to set output device: ' + error.message);
+            }
+        }
+    }
+
+    async startMicrophone(deviceId = null) {
+        try {
+            this.stopAudio();
+
+            const constraints = {
+                audio: deviceId ? { deviceId: { exact: deviceId } } : true
+            };
+
+            this.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            this.setupAnalyser();
+            this.audioSource = this.audioContext.createMediaStreamSource(this.currentStream);
+            this.audioSource.connect(this.analyser);
+
+            const device = this.currentStream.getAudioTracks()[0];
+            document.getElementById('audio-source').textContent = device.label || 'Microphone';
+
+        } catch (error) {
+            this.showError('Microphone access failed: ' + error.message);
+        }
+    }
+
+    async loadFile(file) {
+        if (!file) return;
+
+        const maxSize = 500 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.showError('File too large (max 500MB)');
+            return;
+        }
+
+        const allowedTypes = ['audio/', 'video/'];
+        if (!allowedTypes.some(type => file.type.startsWith(type))) {
+            this.showError('Invalid file type. Please upload audio or video files.');
+            return;
+        }
+
+        try {
+            this.stopAudio();
+
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            this.setupAnalyser();
+
+            const audio = new Audio();
+            this.currentObjectURL = URL.createObjectURL(file);
+            audio.src = this.currentObjectURL;
+            audio.loop = true;
+            this.currentMediaElement = audio;
+
+            if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
+                try {
+                    await audio.setSinkId(this.selectedOutputDeviceId);
+                } catch (error) {
+                    console.warn('Failed to set output device:', error);
+                }
+            }
+
+            this.audioSource = this.audioContext.createMediaElementSource(audio);
+            this.audioSource.connect(this.analyser);
+            this.analyser.connect(this.audioContext.destination);
+
+            await audio.play();
+
+            document.getElementById('audio-source').textContent = file.name;
+            this.detectActiveOutputDevice();
+
+        } catch (error) {
+            this.showError('File loading failed: ' + error.message);
+        }
+    }
+
+    async loadDnBStream() {
+        const streamUrl = 'http://65.108.124.70:7200/stream';
+        const btn = document.getElementById('dnb-stream-btn');
+
+        if (window.location.protocol === 'https:' && streamUrl.startsWith('http:')) {
+            this.showError('⚠️ Mixed Content Error: Cannot load HTTP stream on HTTPS page. The D&B stream must be served over HTTPS to work on GitHub Pages.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.textContent = '⏳ Connecting...';
+
+        try {
+            await this.loadStream(streamUrl);
+            btn.textContent = '▶️ D&B Playing';
+            btn.classList.remove('loading');
+            btn.classList.add('active');
+            this.activeDnBButton = true;
+        } catch (error) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = '🎵 Drum & Bass Radio';
+
+            if (error.name === 'NotAllowedError') {
+                this.showError('Audio playback blocked. Please interact with the page first, then try again.');
+            } else if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
+                this.showError('CORS Error: The stream server does not allow cross-origin access. Contact the radio station administrator.');
+            } else if (error.message.includes('network') || error.message.includes('NetworkError')) {
+                this.showError('Network Error: Cannot reach the D&B stream. Check if the radio station is online.');
+            } else {
+                this.showError('Failed to load D&B stream: ' + error.message);
+            }
+        }
+    }
+
+    validateURL(url) {
+        try {
+            const urlObj = new URL(url);
+            if (!['http:', 'https:'].includes(urlObj.protocol)) {
+                throw new Error('Only HTTP and HTTPS protocols are allowed');
+            }
+            if (url.length > 2048) {
+                throw new Error('URL too long (max 2048 characters)');
+            }
+            return true;
+        } catch (error) {
+            throw new Error('Invalid URL: ' + error.message);
+        }
+    }
+
+    async loadStream(url) {
+        if (!url) {
+            this.showError('Please enter a stream URL');
+            return;
+        }
+
+        try {
+            this.validateURL(url);
+        } catch (error) {
+            this.showError(error.message);
+            return;
+        }
+
+        try {
+            this.stopAudio();
+
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            this.setupAnalyser();
+
+            const audio = new Audio();
+            audio.src = url;
+            audio.crossOrigin = 'anonymous';
+            audio.loop = false;
+            this.currentMediaElement = audio;
+
+            if (this.selectedOutputDeviceId && typeof audio.setSinkId === 'function') {
+                try {
+                    await audio.setSinkId(this.selectedOutputDeviceId);
+                } catch (error) {
+                    console.warn('Failed to set output device:', error);
+                }
+            }
+
+            this.audioSource = this.audioContext.createMediaElementSource(audio);
+            this.audioSource.connect(this.analyser);
+            this.analyser.connect(this.audioContext.destination);
+
+            await audio.play();
+
+            const urlObj = new URL(url);
+            document.getElementById('audio-source').textContent = `Stream: ${urlObj.hostname}`;
+            this.detectActiveOutputDevice();
+
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    setupAnalyser() {
+        if (this.analyser) {
+            this.analyser.disconnect();
+        }
+
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.bufferLength = this.analyser.frequencyBinCount;
+        this.dataArray = new Uint8Array(this.bufferLength);
+        this.analyser.smoothingTimeConstant = 0.8;
+    }
+
+    stopAudio() {
+        if (this.audioSource) {
+            this.audioSource.disconnect();
+            this.audioSource = null;
+        }
+
+        if (this.currentStream) {
+            this.currentStream.getTracks().forEach(track => track.stop());
+            this.currentStream = null;
+        }
+
+        if (this.currentMediaElement) {
+            this.currentMediaElement.pause();
+            this.currentMediaElement.src = '';
+            this.currentMediaElement = null;
+        }
+
+        if (this.currentObjectURL) {
+            URL.revokeObjectURL(this.currentObjectURL);
+            this.currentObjectURL = null;
+            console.log('[Memory] Object URL revoked');
+        }
+
+        const dnbBtn = document.getElementById('dnb-stream-btn');
+        if (dnbBtn && this.activeDnBButton) {
+            dnbBtn.disabled = false;
+            dnbBtn.classList.remove('active', 'loading');
+            dnbBtn.textContent = '🎵 Drum & Bass Radio';
+            this.activeDnBButton = false;
+        }
+
+        document.getElementById('audio-source').textContent = 'None';
+    }
+
+    switchTheme() {
+        if (this.currentTheme) {
+            this.currentTheme.dispose();
+        }
+
+        if (this.currentTheme instanceof SpaceTheme) {
+            this.currentTheme = new DysonSphereTheme(this.scene, this.camera);
+            document.getElementById('current-theme').textContent = 'Dyson Sphere';
+        } else {
+            this.currentTheme = new SpaceTheme(this.scene, this.camera);
+            document.getElementById('current-theme').textContent = 'Space';
+        }
+    }
+
+    toggleUI() {
+        this.uiVisible = !this.uiVisible;
+
+        document.getElementById('control-panel').classList.toggle('visible');
+        const mobileBtn = document.getElementById('mobile-toggle-btn');
+        mobileBtn.textContent = this.uiVisible ? '✕' : '☰';
+        mobileBtn.classList.toggle('active', this.uiVisible);
+
+        // Only toggle status panel on desktop
+        if (window.innerWidth > 768) {
+            const statusPanel = document.querySelector('.status-panel');
+            if (statusPanel) {
+                statusPanel.classList.toggle('visible');
+            }
+        }
+    }
+
+    getFrequencyData() {
+        if (!this.analyser) return { bass: 0, mid: 0, treble: 0, array: [] };
+
+        this.analyser.getByteFrequencyData(this.dataArray);
+
+        const bassEnd = Math.floor(this.bufferLength * 0.1);
+        const midEnd = Math.floor(this.bufferLength * 0.4);
+
+        let bass = 0, mid = 0, treble = 0;
+
+        for (let i = 0; i < bassEnd; i++) bass += this.dataArray[i];
+        for (let i = bassEnd; i < midEnd; i++) mid += this.dataArray[i];
+        for (let i = midEnd; i < this.bufferLength; i++) treble += this.dataArray[i];
+
+        bass = (bass / bassEnd / 255) * this.sensitivity;
+        mid = (mid / (midEnd - bassEnd) / 255) * this.sensitivity;
+        treble = (treble / (this.bufferLength - midEnd) / 255) * this.sensitivity;
+
+        return {
+            bass: Math.min(bass, 3),
+            mid: Math.min(mid, 3),
+            treble: Math.min(treble, 3),
+            array: Array.from(this.dataArray)
+        };
+    }
+
+    updateFPS() {
+        this.fpsFrames++;
+        const now = performance.now();
+        if (now >= this.fpsTime + 1000) {
+            this.currentFPS = Math.round((this.fpsFrames * 1000) / (now - this.fpsTime));
+            this.fpsTime = now;
+            this.fpsFrames = 0;
+            document.getElementById('fps-counter').textContent = this.currentFPS;
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+
+        const freqData = this.getFrequencyData();
+
+        this.updateCinemaMode();
+        this.updateAutoRotate();
+
+        if (this.currentTheme) {
+            this.currentTheme.update(freqData, this.colorSpeed);
+        }
+
+        if (this.golEnabled && this.gol) {
+            this.gol.update(freqData.bass);
+        }
+
+        if (this.textEnabled && this.banner) {
+            const avgAudio = (freqData.bass + freqData.mid + freqData.treble) / 3;
+            this.banner.update(avgAudio, this.colorSpeed);
+        }
+
+        this.renderer.render(this.scene, this.camera);
+        this.updateFPS();
+    }
+
+    onResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        if (this.banner) this.banner.onResize();
+    }
+
+    showError(message) {
+        const errorEl = document.getElementById('error-message');
+        const sanitized = String(message).replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 200);
+        errorEl.textContent = sanitized;
+        errorEl.style.display = 'block';
+        setTimeout(() => {
+            errorEl.style.display = 'none';
+        }, 5000);
+    }
+}
+
+AudioVisualizer;
+
+
+        // Main initialization
+        window.addEventListener('DOMContentLoaded', () => {
+    try {
+        const visualizer = new AudioVisualizer();
+        console.log('AudioVisualizer initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize AudioVisualizer:', error);
+        document.getElementById('loading').textContent = 'Error: Failed to initialize';
+        const errorEl = document.getElementById('error-message');
+        if (errorEl) {
+            errorEl.textContent = error.message;
+            errorEl.style.display = 'block';
+        }
+    }
+});
+
+
     </script>
 </body>
 </html>
