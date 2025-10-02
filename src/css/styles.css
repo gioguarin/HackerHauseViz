@@ -264,7 +264,8 @@
         .keyboard-hint {
             position: fixed;
             bottom: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 3;
             background: rgba(0, 20, 40, 0.5);
             backdrop-filter: blur(5px);
@@ -273,6 +274,8 @@
             padding: 10px;
             font-size: 10px;
             color: #0dd;
+            text-align: center;
+            white-space: nowrap;
         }
 
         @media (max-width: 768px) {
