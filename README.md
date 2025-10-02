@@ -149,30 +149,15 @@ The project uses GitHub Actions for continuous deployment on every push to `main
 
 ### Quick Start
 
-**Two versions available:**
+```bash
+# Option 1: Simple HTTP server (no installation required)
+python3 -m http.server 8000
+# Open http://localhost:8000
 
-1. **Single-File Version** (Production):
-   ```bash
-   # Simply open index.html in a browser
-   open index.html
-   ```
-   - No build process or dependencies required
-   - Single self-contained HTML file (1,952 lines)
-   - Perfect for quick deployment
-
-2. **Modular Version** (Development - Recommended):
-   ```bash
-   # Python HTTP server
-   python3 -m http.server 8000
-   # Open http://localhost:8000/index-modular.html
-
-   # Or with Vite (install dependencies first)
-   npm install
-   npm run dev:vite
-   ```
-   - Organized into ES6 modules
-   - Better for development and contributions
-   - Hot module replacement with Vite
+# Option 2: Development with hot reload
+npm install
+npm run dev
+```
 
 ### Running with Local Server (Recommended)
 
@@ -202,7 +187,6 @@ Then open `http://localhost:8000` in your browser.
 ```
 HackerHauseViz/
 ├── index.html              # Original single-file version (production)
-├── index-modular.html      # New modular version (development)
 ├── src/
 │   ├── js/
 │   │   ├── AudioVisualizer.js     # Main controller (836 lines)
